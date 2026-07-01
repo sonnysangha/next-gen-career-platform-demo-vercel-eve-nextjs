@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
+import { withEve } from "eve/next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
 };
 
-export default nextConfig;
+// Mounts the Eve agent (agent/) into this Next.js app at same-origin /eve/v1/*.
+export default withEve(nextConfig);

@@ -32,6 +32,16 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...but keep the documented template committed
+!.env*.example
+
+# eve (agent build cache, dev runtime, snapshots, nitro output)
+.eve/
+.output/
+
+# local tooling (machine-specific launch config, workflow scratch)
+.claude/
+.workflow-data/
 
 # vercel
 .vercel
