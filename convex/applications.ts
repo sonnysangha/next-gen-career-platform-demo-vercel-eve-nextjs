@@ -175,6 +175,60 @@ const applicantValidator = v.object({
  * Caller must administer the company. Pro-only presentation (skill
  * insights, etc.) is gated in the UI via Clerk's `has()`, not here.
  */
+/**
+ * One application with its full context for the applicant detail page.
+ * Caller must administer the company the application belongs to.
+ */
+export const getApplicantDetail = query({
+  args: { applicationId: v.id("applications") },
+  returns: v.union(
+    v.object({
+      ...applicantValidator.fields,
+      job: v.union(jobDocValidator, v.null()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const app = await ctx.db.get(args.applicationId);
+    if (app === null) return null;
+    await assertCompanyAdmin(ctx, app.companyId);
+
+    const user = await ctx.db.get(app.userId);
+    const profile =
+      user === null
+        ? null
+        : await ctx.db
+            .query("profiles")
+            .withIndex("by_userId", (q) => q.eq("userId", user._id))
+            .unique();
+    const skills =
+      user === null
+        ? []
+        : await ctx.db
+            .query("skills")
+            .withIndex("by_userId", (q) => q.eq("userId", user._id))
+            .collect();
+    const job = await ctx.db.get(app.jobId);
+
+    return {
+      ...app,
+      applicant:
+        user === null
+          ? null
+          : {
+              _id: user._id,
+              name: user.name,
+              username: user.username,
+              imageUrl: user.imageUrl ?? null,
+              headline: profile?.headline ?? null,
+            },
+      profile,
+      skills,
+      job,
+    };
+  },
+});
+
 export const getApplicantsForCompany = query({
   args: {
     companyId: v.id("companies"),

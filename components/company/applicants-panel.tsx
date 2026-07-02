@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { useQuery, useAction } from "convex/react";
 import { toast } from "sonner";
@@ -26,7 +27,6 @@ import {
   PipelineBoard,
   type PipelineStage,
 } from "@/components/company/pipeline-board";
-import { ApplicantDetailDialog } from "@/components/company/applicant-detail-dialog";
 
 const PIPELINE = [
   "submitted",
@@ -72,12 +72,12 @@ export function ApplicantsPanel({
   companyId: Id<"companies">;
   jobs: { _id: Id<"jobs">; title: string }[];
 }) {
+  const router = useRouter();
   const { has } = useAuth();
   // `org:` scope — the pipeline is a Company Pro (organization plan) feature.
   const isPro = has?.({ plan: `org:${COMPANY_PRO_PLAN}` }) ?? false;
   const [jobFilter, setJobFilter] = useState<string>("all");
   const [view, setView] = useState<"board" | "list">("board");
-  const [detailId, setDetailId] = useState<Id<"applications"> | null>(null);
   const [showRejected, setShowRejected] = useState(false);
   const applicants = useQuery(api.applications.getApplicantsForCompany, {
     companyId,
@@ -201,7 +201,7 @@ export function ApplicantsPanel({
           isPro={isPro}
           showRejected={showRejected}
           onMove={moveTo}
-          onOpen={setDetailId}
+          onOpen={(id) => router.push(`/company/applicants/${id}`)}
         />
       ) : visibleApplicants.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">
@@ -214,7 +214,7 @@ export function ApplicantsPanel({
             <div
               key={app._id}
               className="cursor-pointer rounded-lg border p-3 transition-colors hover:border-primary/40"
-              onClick={() => setDetailId(app._id)}
+              onClick={() => router.push(`/company/applicants/${app._id}`)}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <Link
@@ -315,22 +315,6 @@ export function ApplicantsPanel({
         </div>
       )}
 
-      <ApplicantDetailDialog
-        app={applicants?.find((a) => a._id === detailId) ?? null}
-        jobTitle={
-          detailId !== null
-            ? (jobTitle.get(
-                (applicants?.find((a) => a._id === detailId)?.jobId ??
-                  "") as string,
-              ) ?? "a role")
-            : "a role"
-        }
-        isPro={isPro}
-        onMove={moveTo}
-        onOpenChange={(open) => {
-          if (!open) setDetailId(null);
-        }}
-      />
     </section>
   );
 }
