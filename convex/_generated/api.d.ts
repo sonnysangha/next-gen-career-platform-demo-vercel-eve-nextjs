@@ -22,6 +22,7 @@ import type * as model from "../model.js";
 import type * as network from "../network.js";
 import type * as notifications from "../notifications.js";
 import type * as profiles from "../profiles.js";
+import type * as search from "../search.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   network: typeof network;
   notifications: typeof notifications;
   profiles: typeof profiles;
+  search: typeof search;
   seed: typeof seed;
   users: typeof users;
 }>;

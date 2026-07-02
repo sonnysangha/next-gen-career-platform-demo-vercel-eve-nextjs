@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useDeferredValue, useState } from "react";
 import {
   Home,
   Briefcase,
@@ -12,12 +12,15 @@ import {
   Sparkles,
   Search,
   LayoutDashboard,
+  UserRound,
 } from "lucide-react";
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Logo } from "@/components/logo";
 import { NotificationsBell } from "@/components/layout/notifications-bell";
+import { CompanyLogo } from "@/components/company-logo";
+import { UserAvatar } from "@/components/user-avatar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -29,11 +32,73 @@ const NAV_ITEMS = [
   { href: "/agent", label: "AI Agent", icon: Sparkles },
 ];
 
+function SearchGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="py-1">
+      <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function SearchRow({
+  href,
+  title,
+  subtitle,
+  leading,
+}: {
+  href: string;
+  title: string;
+  subtitle: string;
+  leading: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-muted"
+    >
+      {leading}
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium">{title}</span>
+        <span className="block truncate text-xs text-muted-foreground">
+          {subtitle}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const myCompany = useQuery(api.companies.getMyCompany, {});
+  const me = useQuery(api.users.getCurrentUser, {});
+  const myUsername = me?.user.username;
+
+  // Typeahead across companies, people, and jobs. Deferred so fast typing
+  // doesn't fire a query per keystroke.
+  const deferredQuery = useDeferredValue(query.trim());
+  const results = useQuery(
+    api.search.global,
+    searchFocused && deferredQuery.length >= 2 ? { q: deferredQuery } : "skip",
+  );
+  const showDropdown =
+    searchFocused &&
+    deferredQuery.length >= 2 &&
+    results !== undefined &&
+    (results.companies.length > 0 ||
+      results.people.length > 0 ||
+      results.jobs.length > 0);
 
   function isActive(href: string, exact?: boolean) {
     if (exact) return pathname === href;
@@ -68,6 +133,7 @@ export function TopNav() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            setSearchFocused(false);
             router.push(`/jobs?q=${encodeURIComponent(query)}`);
           }}
           className="relative hidden max-w-xs flex-1 sm:block"
@@ -76,9 +142,74 @@ export function TopNav() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            // Delay so clicks on dropdown links land before it unmounts.
+            onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
             placeholder="Search jobs, people, companies"
             className="h-9 bg-muted/50 pl-8"
           />
+
+          {showDropdown && (
+            <div className="absolute left-0 right-0 top-11 z-50 max-h-[70vh] overflow-y-auto rounded-lg border bg-popover p-2 shadow-lg">
+              {results.companies.length > 0 && (
+                <SearchGroup label="Companies">
+                  {results.companies.map((c) => (
+                    <SearchRow
+                      key={c._id}
+                      href={`/companies/${c.slug}`}
+                      title={c.name}
+                      subtitle={c.industry}
+                      leading={
+                        <CompanyLogo
+                          name={c.name}
+                          src={c.logoUrl}
+                          className="h-7 w-7"
+                        />
+                      }
+                    />
+                  ))}
+                </SearchGroup>
+              )}
+              {results.people.length > 0 && (
+                <SearchGroup label="People">
+                  {results.people.map((p) => (
+                    <SearchRow
+                      key={p._id}
+                      href={`/in/${p.username}`}
+                      title={p.name}
+                      subtitle={p.headline ?? `@${p.username}`}
+                      leading={
+                        <UserAvatar
+                          name={p.name}
+                          src={p.imageUrl}
+                          className="h-7 w-7"
+                        />
+                      }
+                    />
+                  ))}
+                </SearchGroup>
+              )}
+              {results.jobs.length > 0 && (
+                <SearchGroup label="Jobs">
+                  {results.jobs.map((j) => (
+                    <SearchRow
+                      key={j._id}
+                      href={`/jobs?job=${j._id}`}
+                      title={j.title}
+                      subtitle={[j.companyName, j.location]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      leading={
+                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-muted">
+                          <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
+                        </span>
+                      }
+                    />
+                  ))}
+                </SearchGroup>
+              )}
+            </div>
+          )}
         </form>
 
         <nav className="ml-auto flex items-center gap-0.5 sm:gap-1">
@@ -93,7 +224,7 @@ export function TopNav() {
                   "flex min-w-14 flex-col items-center rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
                   active
                     ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 <Icon className="mb-0.5 h-5 w-5" />
@@ -122,9 +253,19 @@ export function TopNav() {
           )}
 
           <div className="ml-1 sm:ml-2">
-            <UserButton
-              appearance={{ elements: { avatarBox: "h-8 w-8" } }}
-            />
+            <UserButton appearance={{ elements: { avatarBox: "h-8 w-8" } }}>
+              {myUsername && (
+                <UserButton.MenuItems>
+                  <UserButton.Link
+                    label="View profile"
+                    labelIcon={<UserRound className="h-4 w-4" />}
+                    href={`/in/${myUsername}`}
+                  />
+                  <UserButton.Action label="manageAccount" />
+                  <UserButton.Action label="signOut" />
+                </UserButton.MenuItems>
+              )}
+            </UserButton>
           </div>
         </nav>
       </div>
