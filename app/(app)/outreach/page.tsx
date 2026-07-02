@@ -18,7 +18,10 @@ export default function OutreachPage() {
   const { has } = useAuth();
   const drafts = useQuery(api.drafts.getMyOutreachDrafts, {});
   const deleteDraft = useMutation(api.drafts.deleteOutreachDraft);
-  const outreachLocked = !(has?.({ feature: AI_FEATURES.outreach_writer }) ?? false);
+  // `user:` scope — personal Pro unlocks this even while an org is active.
+  const outreachLocked = !(
+    has?.({ feature: `user:${AI_FEATURES.outreach_writer}` }) ?? false
+  );
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">

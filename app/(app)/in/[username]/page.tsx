@@ -81,7 +81,10 @@ export default function ProfilePage() {
   const setAvatar = useMutation(api.files.setMyAvatar);
   const setCover = useMutation(api.files.setMyProfileCover);
 
-  const optimizerLocked = !(has?.({ feature: AI_FEATURES.profile_optimizer }) ?? false);
+  // `user:` scope — personal Pro unlocks this even while an org is active.
+  const optimizerLocked = !(
+    has?.({ feature: `user:${AI_FEATURES.profile_optimizer}` }) ?? false
+  );
 
   if (data === undefined) {
     return <Skeleton className="h-96 w-full rounded-xl" />;

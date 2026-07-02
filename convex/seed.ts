@@ -524,6 +524,244 @@ function pickSome<T>(arr: T[], n: number): T[] {
   return faker.helpers.arrayElements(arr, Math.min(n, arr.length));
 }
 
+// ── PAPAFAM job seed ─────────────────────────────────────────────────
+
+type PapafamJob = {
+  title: string;
+  salaryMin: number;
+  salaryMax: number;
+  currency: string;
+  skillsRequired: string[];
+  seniority: Seniority;
+  workMode: WorkMode;
+  location: string;
+  description: string;
+};
+
+/**
+ * 8 openings for PAPAFAM — Sonny Sangha's developer-education and software
+ * brand. Salaries are GBP (the company is UK-rooted, roles mostly remote).
+ */
+const PAPAFAM_JOBS: PapafamJob[] = [
+  {
+    title: "Senior React Developer",
+    salaryMin: 85000,
+    salaryMax: 110000,
+    currency: "GBP",
+    skillsRequired: [
+      "React",
+      "Next.js",
+      "TypeScript",
+      "Tailwind CSS",
+      "Zustand",
+      "Testing Library",
+    ],
+    seniority: "senior",
+    workMode: "remote",
+    location: "Remote (UK/EU timezones)",
+    description:
+      "Lead frontend development across the PAPAFAM product suite — the courses platform, community app, and the demo apps that millions of developers learn from on YouTube. Your code doesn't just ship to users; it becomes the reference implementation thousands of developers study line by line, so craft and clarity matter as much as velocity. You'll own architecture decisions, mentor junior engineers, and occasionally appear on camera walking through what you built. Requirements: 5+ years of production React, deep Next.js App Router experience, strong TypeScript, and the ability to explain complex patterns simply.",
+  },
+  {
+    title: "Full-Stack Engineer (Next.js / Convex)",
+    salaryMin: 70000,
+    salaryMax: 95000,
+    currency: "GBP",
+    skillsRequired: [
+      "Next.js",
+      "Convex",
+      "TypeScript",
+      "React",
+      "Clerk",
+      "Vercel",
+    ],
+    seniority: "mid",
+    workMode: "remote",
+    location: "Remote (UK/EU timezones)",
+    description:
+      "Build and run the full stack behind PAPAFAM's platforms: course delivery, membership billing, community features, and the internal tools that keep a media company shipping weekly. Our stack is Next.js on Vercel with Convex as the reactive backend and Clerk for auth — you should either know it or be excited to go deep on it. You'll ship end to end: schema design, backend functions, and the UI on top. Requirements: 3+ years full-stack TypeScript, real production experience with a serverless or reactive backend, and comfort owning features from idea to deploy.",
+  },
+  {
+    title: "Developer Advocate",
+    salaryMin: 65000,
+    salaryMax: 90000,
+    currency: "GBP",
+    skillsRequired: [
+      "React",
+      "TypeScript",
+      "public speaking",
+      "technical writing",
+      "video production",
+      "community building",
+    ],
+    seniority: "mid",
+    workMode: "hybrid",
+    location: "London, UK (hybrid)",
+    description:
+      "Be the bridge between PAPAFAM and the hundreds of thousands of developers who learn with us. You'll build demo apps, write tutorials, present livestreams and conference talks, and work with partner companies (Clerk, Convex, Vercel and friends) to showcase their tools honestly and well. Half engineer, half storyteller — you must be able to write production-quality React and hold a room's attention. Requirements: solid frontend engineering background, a public track record (talks, videos, blog posts, or open source), and genuine enthusiasm for teaching.",
+  },
+  {
+    title: "Video Content Producer",
+    salaryMin: 45000,
+    salaryMax: 65000,
+    currency: "GBP",
+    skillsRequired: [
+      "video editing",
+      "Premiere Pro",
+      "After Effects",
+      "YouTube strategy",
+      "storyboarding",
+      "motion graphics",
+    ],
+    seniority: "mid",
+    workMode: "hybrid",
+    location: "London, UK (hybrid)",
+    description:
+      "Own the production pipeline for PAPAFAM's YouTube channel and course content — from raw multi-hour coding sessions to tight, watchable builds with clean pacing, motion graphics, and thumbnails that earn the click. You'll work directly with Sonny on storyboarding, manage the edit calendar, and continually push retention and production quality. Requirements: 3+ years editing long-form YouTube or educational content, strong Premiere/After Effects, an eye for pacing technical material, and bonus points if you understand the code you're cutting.",
+  },
+  {
+    title: "Community Manager",
+    salaryMin: 38000,
+    salaryMax: 52000,
+    currency: "GBP",
+    skillsRequired: [
+      "community management",
+      "Discord",
+      "content moderation",
+      "social media",
+      "event planning",
+      "copywriting",
+    ],
+    seniority: "mid",
+    workMode: "remote",
+    location: "Remote (UK/EU timezones)",
+    description:
+      "Run the PAPAFAM community — the Discord where thousands of developers help each other level up, land jobs, and share what they built. You'll set the tone, organise events and coding challenges, coordinate moderators, surface member wins for social content, and be the feedback loop between the community and the content/product teams. Requirements: 2+ years managing an online community (dev communities a big plus), excellent written communication, and the empathy to make a beginner's first question feel welcome.",
+  },
+  {
+    title: "Junior Frontend Developer",
+    salaryMin: 30000,
+    salaryMax: 42000,
+    currency: "GBP",
+    skillsRequired: [
+      "React",
+      "JavaScript",
+      "TypeScript",
+      "Tailwind CSS",
+      "HTML",
+      "CSS",
+    ],
+    seniority: "junior",
+    workMode: "remote",
+    location: "Remote (UK/EU timezones)",
+    description:
+      "Start your career where thousands of developers started theirs. You'll build UI for PAPAFAM's platforms and demo apps under the mentorship of senior engineers, with code review treated as teaching, not gatekeeping. Expect real tickets from week one: components, pages, bug fixes, and polish passes on apps that go in front of a huge audience. Requirements: solid React and JavaScript fundamentals (bootcamp, degree, or self-taught — we care about the work), a portfolio of projects you can talk through, and hunger to learn in public.",
+  },
+  {
+    title: "DevOps Engineer",
+    salaryMin: 75000,
+    salaryMax: 100000,
+    currency: "GBP",
+    skillsRequired: [
+      "Vercel",
+      "GitHub Actions",
+      "AWS",
+      "Terraform",
+      "observability",
+      "CI/CD",
+    ],
+    seniority: "senior",
+    workMode: "remote",
+    location: "Remote (UK/EU timezones)",
+    description:
+      "Keep PAPAFAM's platforms fast, cheap, and boring to operate. You'll own CI/CD across a fleet of Next.js apps on Vercel, manage the AWS pieces that sit behind them (media storage, transcoding, edge caching for course video), wire up observability so we find problems before students do, and harden deploy pipelines that ship multiple times a day. Requirements: 4+ years in DevOps/platform roles, strong GitHub Actions and infrastructure-as-code experience, and a bias for simple systems over impressive ones.",
+  },
+  {
+    title: "Technical Writer",
+    salaryMin: 40000,
+    salaryMax: 58000,
+    currency: "GBP",
+    skillsRequired: [
+      "technical writing",
+      "Markdown",
+      "React",
+      "documentation",
+      "SEO",
+      "editing",
+    ],
+    seniority: "mid",
+    workMode: "remote",
+    location: "Remote (worldwide)",
+    description:
+      "Turn PAPAFAM's video-first teaching into world-class written material: course notes, step-by-step build guides, cheat sheets, and blog posts that rank and actually help. You'll work from video transcripts and source code to produce docs that stand alone, keep them current as frameworks move fast, and shape our written voice — clear, direct, zero fluff. Requirements: proven technical writing portfolio, enough React/TypeScript to run the code you document, strong editing instincts, and comfort owning a content calendar.",
+  },
+];
+
+/**
+ * Seed job postings for the PAPAFAM company page (created via the company
+ * onboarding flow, so the row already exists with an orgId).
+ *
+ * Run with:  npx convex run seed:papafamJobs
+ *
+ * Idempotent by title: jobs whose title already exists for the company are
+ * skipped, so re-running never duplicates.
+ */
+export const papafamJobs = internalMutation({
+  args: {},
+  returns: v.object({
+    companyId: v.id("companies"),
+    inserted: v.array(v.object({ jobId: v.id("jobs"), title: v.string() })),
+    skipped: v.array(v.string()),
+  }),
+  handler: async (ctx) => {
+    const company = await ctx.db
+      .query("companies")
+      .withIndex("by_slug", (q) => q.eq("slug", "papafam"))
+      .unique();
+    if (company === null) {
+      throw new Error(
+        'No company with slug "papafam" — complete company onboarding first.',
+      );
+    }
+
+    // Existing titles for this company (bounded: one company's postings).
+    const existing = await ctx.db
+      .query("jobs")
+      .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
+      .collect();
+    const existingTitles = new Set(existing.map((j) => j.title));
+
+    const now = Date.now();
+    const inserted: { jobId: Id<"jobs">; title: string }[] = [];
+    const skipped: string[] = [];
+
+    for (const [i, job] of PAPAFAM_JOBS.entries()) {
+      if (existingTitles.has(job.title)) {
+        skipped.push(job.title);
+        continue;
+      }
+      const jobId = await ctx.db.insert("jobs", {
+        title: job.title,
+        companyId: company._id,
+        status: "open",
+        salaryMin: job.salaryMin,
+        salaryMax: job.salaryMax,
+        currency: job.currency,
+        skillsRequired: job.skillsRequired,
+        seniority: job.seniority,
+        workMode: job.workMode,
+        location: job.location,
+        description: job.description,
+        // Stagger posting dates over the last ~2 weeks, newest first.
+        postedAt: now - i * 2 * 86_400_000,
+      });
+      inserted.push({ jobId, title: job.title });
+    }
+
+    return { companyId: company._id, inserted, skipped };
+  },
+});
+
 // ── The seed mutation ────────────────────────────────────────────────
 
 export const run = internalMutation({

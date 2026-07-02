@@ -42,7 +42,10 @@ import { AI_FEATURES } from "@/lib/ai-features";
 function JobsInner() {
   const params = useSearchParams();
   const { has } = useAuth();
-  const jobMatcherLocked = !(has?.({ feature: AI_FEATURES.job_matcher }) ?? false);
+  // `user:` scope — personal Pro unlocks this even while an org is active.
+  const jobMatcherLocked = !(
+    has?.({ feature: `user:${AI_FEATURES.job_matcher}` }) ?? false
+  );
 
   const [tab, setTab] = useState<string>("browse");
   const [search, setSearch] = useState(params.get("q") ?? "");

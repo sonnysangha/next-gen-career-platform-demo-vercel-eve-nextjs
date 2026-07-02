@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEveAgent } from "eve/react";
-import { Sparkles, Send, Check, X, CircleHelp } from "lucide-react";
+import { Sparkles, Send, Check, X, CircleHelp, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,24 @@ type AnyPart = {
   toolName?: string;
   state?: string;
   input?: unknown;
+  output?: unknown;
+  result?: unknown;
   toolMetadata?: { eve?: { inputRequest?: InputRequest } };
+};
+type Job = {
+  jobId?: string;
+  title?: string;
+  company?: string;
+  seniority?: string;
+  workMode?: string;
+  location?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  currency?: string;
+  matchScore?: number;
+  requiredSkills?: string[];
+  matchedSkills?: string[];
+  missingSkills?: string[];
 };
 type InputRequest = {
   requestId: string;
@@ -80,7 +98,9 @@ export function AgentChat() {
   const lastMessage = messages[messages.length - 1];
   const streamingText =
     lastMessage?.role === "assistant" &&
-    lastMessage.parts.some((p) => p.type === "text" && p.text && p.text.length > 0);
+    lastMessage.parts.some(
+      (p) => p.type === "text" && p.text && p.text.length > 0,
+    );
   const showThinking = busy && !streamingText;
 
   return (
@@ -94,8 +114,8 @@ export function AgentChat() {
             </div>
             <h2 className="text-lg font-semibold">Your AI Career Agent</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Ask about your profile, jobs, outreach, or a career plan. I read your real
-              CareerConnect data and ask before saving anything.
+              Ask about your profile, jobs, outreach, or a career plan. I read
+              your real CareerConnect data and ask before saving anything.
             </p>
             <div className="mt-5 grid gap-2 text-left">
               {SUGGESTED.map((s) => (
@@ -140,25 +160,21 @@ export function AgentChat() {
                       onFreeform={submit}
                     />
                   ))}
+                  {message.id === lastMessage?.id && showThinking && (
+                    <ThinkingDots />
+                  )}
                 </div>
               </div>
             )}
           </div>
         ))}
 
-        {showThinking && (
+        {showThinking && lastMessage?.role !== "assistant" && (
           <div className="flex gap-3">
             <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Sparkles className="h-4 w-4 animate-pulse" />
             </div>
-            <div className="flex items-center gap-2 pt-1.5 text-sm text-muted-foreground">
-              <span>Thinking</span>
-              <span className="flex gap-1">
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60" />
-              </span>
-            </div>
+            <ThinkingDots />
           </div>
         )}
 
@@ -227,7 +243,23 @@ const TOOL_LABELS: Record<string, string> = {
   create_profile_rewrite: "Drafted a profile rewrite",
   create_outreach_draft: "Drafted outreach",
   create_career_plan: "Drafted a career plan",
+  // Declared subagents surface as tool calls by their bare directory name.
+  "job-scout": "Scouting best-fit jobs",
+  "profile-writer": "Writing your profile rewrite",
 };
+
+function ThinkingDots() {
+  return (
+    <div className="flex items-center gap-2 pt-1.5 text-sm text-muted-foreground">
+      <span>Thinking</span>
+      <span className="flex gap-1">
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60" />
+      </span>
+    </div>
+  );
+}
 
 function PartView({
   part,
@@ -249,10 +281,17 @@ function PartView({
     if (request) {
       const isApproval =
         part.toolName?.startsWith("save_") ||
-        (request.options?.some((o) => /^(approve|deny|allow|reject)$/i.test(o.id)) ??
+        (request.options?.some((o) =>
+          /^(approve|deny|allow|reject)$/i.test(o.id),
+        ) ??
           false);
       return isApproval ? (
-        <ApprovalCard part={part} request={request} busy={busy} onAnswer={onAnswer} />
+        <ApprovalCard
+          part={part}
+          request={request}
+          busy={busy}
+          onAnswer={onAnswer}
+        />
       ) : (
         <QuestionCard
           request={request}
@@ -262,12 +301,25 @@ function PartView({
         />
       );
     }
-    // Completed tool activity — a subtle chip, only for known tools.
+    // Rich job cards once ranked matches arrive from get_relevant_jobs.
+    if (part.toolName === "get_relevant_jobs") {
+      const jobs = extractJobs(part.output ?? part.result);
+      if (jobs.length > 0) return <JobCards jobs={jobs} />;
+    }
+
+    // Tool / subagent activity — a subtle chip, only for known tools. Show a
+    // spinner while it's still running and a check once it has output, so the
+    // "Thinking" phase shows visible progress (including subagent delegation).
     const label = part.toolName ? TOOL_LABELS[part.toolName] : undefined;
     if (!label) return null;
+    const done = part.state === "output-available" || !busy;
     return (
       <div className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
-        <Check className="h-3 w-3 text-primary" />
+        {done ? (
+          <Check className="h-3 w-3 text-primary" />
+        ) : (
+          <Loader2 className="h-3 w-3 animate-spin text-primary" />
+        )}
         {label}
       </div>
     );
@@ -364,7 +416,7 @@ function humanize(key: string) {
 function ApprovalPreview({ input }: { input: unknown }) {
   if (!input || typeof input !== "object") return null;
   const entries = Object.entries(input as Record<string, unknown>).filter(
-    ([k, v]) => v != null && v !== "" && !/^(jobId|recruiterId)$/.test(k)
+    ([k, v]) => v != null && v !== "" && !/^(jobId|recruiterId)$/.test(k),
   );
   if (entries.length === 0) return null;
 
@@ -372,7 +424,9 @@ function ApprovalPreview({ input }: { input: unknown }) {
     <div className="mt-3 space-y-2.5 rounded-lg bg-background p-3 text-sm">
       {entries.map(([k, v]) => (
         <div key={k}>
-          <p className="text-xs font-medium text-muted-foreground">{humanize(k)}</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            {humanize(k)}
+          </p>
           {Array.isArray(v) ? (
             v.length > 0 && typeof v[0] === "object" ? (
               <ul className="mt-1 list-disc space-y-0.5 pl-4">
@@ -387,7 +441,10 @@ function ApprovalPreview({ input }: { input: unknown }) {
             ) : (
               <div className="mt-1 flex flex-wrap gap-1">
                 {(v as unknown[]).map((s, i) => (
-                  <span key={i} className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                  <span
+                    key={i}
+                    className="rounded bg-muted px-1.5 py-0.5 text-xs"
+                  >
                     {String(s)}
                   </span>
                 ))}
@@ -444,7 +501,11 @@ function ApprovalCard({
               onClick={() => onAnswer(request.requestId, opt.id)}
               className="gap-1.5"
             >
-              {isApprove ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+              {isApprove ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <X className="h-4 w-4" />
+              )}
               {opt.label ?? opt.id}
             </Button>
           );
@@ -452,4 +513,125 @@ function ApprovalCard({
       </div>
     </div>
   );
+}
+
+function extractJobs(output: unknown): Job[] {
+  if (!output || typeof output !== "object") return [];
+  const jobs = (output as { jobs?: unknown }).jobs;
+  return Array.isArray(jobs) ? (jobs as Job[]) : [];
+}
+
+function formatSalary(job: Job): string | null {
+  const { salaryMin, salaryMax, currency } = job;
+  if (salaryMin == null && salaryMax == null) return null;
+  const prefix = !currency || currency === "USD" ? "$" : `${currency} `;
+  const k = (n: number) => `${prefix}${Math.round(n / 1000)}K`;
+  if (salaryMin != null && salaryMax != null)
+    return `${k(salaryMin)}–${k(salaryMax)}`;
+  return k((salaryMin ?? salaryMax) as number);
+}
+
+function JobCards({ jobs }: { jobs: Job[] }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {jobs.map((job, i) => (
+        <JobCard key={job.jobId ?? i} job={job} />
+      ))}
+    </div>
+  );
+}
+
+function JobCard({ job }: { job: Job }) {
+  const score = job.matchScore ?? 0;
+  const scoreClass =
+    score >= 60
+      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+      : score >= 40
+        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+        : "bg-muted text-muted-foreground";
+
+  const meta = [
+    job.location,
+    job.workMode,
+    job.seniority,
+    formatSalary(job),
+  ].filter(Boolean);
+
+  const cardClass =
+    "group flex flex-col rounded-xl border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:shadow-sm";
+
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold group-hover:underline">
+            {job.title ?? "Untitled role"}
+          </p>
+          {job.company && (
+            <p className="truncate text-xs text-muted-foreground">
+              {job.company}
+            </p>
+          )}
+        </div>
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+            scoreClass,
+          )}
+        >
+          {score}% match
+        </span>
+      </div>
+
+      {meta.length > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground">{meta.join(" · ")}</p>
+      )}
+
+      {(job.matchedSkills?.length ?? 0) > 0 && (
+        <div className="mt-3">
+          <p className="text-[11px] font-medium text-muted-foreground">
+            Matched
+          </p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {job.matchedSkills!.map((s) => (
+              <span
+                key={s}
+                className="rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-700 dark:text-emerald-400"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(job.missingSkills?.length ?? 0) > 0 && (
+        <div className="mt-2">
+          <p className="text-[11px] font-medium text-muted-foreground">
+            Missing
+          </p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {job.missingSkills!.map((s) => (
+              <span
+                key={s}
+                className="rounded border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 text-xs text-red-700 dark:text-red-400"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  // Link into the Jobs page detail view (?job=<id>) when we have the id.
+  if (job.jobId) {
+    return (
+      <Link href={`/jobs?job=${job.jobId}`} className={cardClass}>
+        {content}
+      </Link>
+    );
+  }
+  return <div className={cardClass}>{content}</div>;
 }

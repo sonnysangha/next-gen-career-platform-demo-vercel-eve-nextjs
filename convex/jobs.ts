@@ -1,45 +1,61 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import {
+  query,
+  mutation,
+  action,
+  internalQuery,
+  internalMutation,
+} from "./_generated/server";
+import { internal } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
 import { QueryCtx } from "./_generated/server";
 import {
   getUserByIdentity,
   getProfileForUser,
   assertCompanyAdmin,
-  orgHasCompanyPro,
+  getActiveOrgId,
   FREE_OPEN_JOB_LIMIT,
   jobDocValidator,
   companyDocValidator,
   recruiterDocValidator,
 } from "./model";
+import { orgHasCompanyProBilling } from "./clerkBilling";
 import { cosineSimilarity } from "./embeddings";
 import type { MutationCtx } from "./_generated/server";
 
 /** Jobs with no status are legacy/seeded rows and count as open. */
 const jobIsOpen = (j: Doc<"jobs">) => j.status !== "closed";
 
+const FREE_CAP_ERROR = `Free companies can have up to ${FREE_OPEN_JOB_LIMIT} open jobs. Upgrade to Company Pro for unlimited job posts.`;
+
+/** Open jobs at a company, optionally ignoring the job being transitioned. */
+async function countOpenJobs(
+  ctx: QueryCtx | MutationCtx,
+  companyId: Id<"companies">,
+  excludeJobId?: Id<"jobs">,
+): Promise<number> {
+  const jobs = await ctx.db
+    .query("jobs")
+    .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+    .collect();
+  return jobs.filter((j) => jobIsOpen(j) && j._id !== excludeJobId).length;
+}
+
 /**
- * Org billing: free companies keep at most FREE_OPEN_JOB_LIMIT jobs open;
- * Company Pro (checked via the JWT billing claims) removes the cap.
- * `excludeJobId` ignores the job being transitioned (reopen case).
+ * Org billing: free companies keep at most FREE_OPEN_JOB_LIMIT jobs open.
+ * Company Pro removes the cap — but that is verified against Clerk Billing
+ * via the Backend SDK in the public ACTIONS (createJob / setJobStatus), which
+ * pass `capExempt: true` into the internal mutations. This transactional
+ * check is the enforcement for everyone else.
  */
 async function assertOpenJobSlot(
   ctx: MutationCtx,
   companyId: Id<"companies">,
   excludeJobId?: Id<"jobs">,
 ): Promise<void> {
-  if (await orgHasCompanyPro(ctx)) return;
-  const jobs = await ctx.db
-    .query("jobs")
-    .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
-    .collect();
-  const openCount = jobs.filter(
-    (j) => jobIsOpen(j) && j._id !== excludeJobId,
-  ).length;
+  const openCount = await countOpenJobs(ctx, companyId, excludeJobId);
   if (openCount >= FREE_OPEN_JOB_LIMIT) {
-    throw new Error(
-      `Free companies can have up to ${FREE_OPEN_JOB_LIMIT} open jobs. Upgrade to Company Pro for unlimited job posts.`,
-    );
+    throw new Error(FREE_CAP_ERROR);
   }
 }
 
@@ -420,9 +436,80 @@ export const getCompanyJobs = query({
   },
 });
 
-/** Post a job for a company the caller administers. */
-export const createJob = mutation({
+/**
+ * Would opening one more job put this company over the free-tier cap?
+ * Asserts company admin. `excludeJobId` ignores the job being reopened.
+ */
+export const wouldExceedFreeCap = internalQuery({
+  args: {
+    companyId: v.id("companies"),
+    excludeJobId: v.optional(v.id("jobs")),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    await assertCompanyAdmin(ctx, args.companyId);
+    const openCount = await countOpenJobs(
+      ctx,
+      args.companyId,
+      args.excludeJobId,
+    );
+    return openCount >= FREE_OPEN_JOB_LIMIT;
+  },
+});
+
+/** The company a job belongs to (asserting admin). Used by setJobStatus. */
+export const getJobCompanyId = internalQuery({
+  args: { jobId: v.id("jobs") },
+  returns: v.id("companies"),
+  handler: async (ctx, args) => {
+    const job = await ctx.db.get(args.jobId);
+    if (job === null) throw new Error("Job not found");
+    await assertCompanyAdmin(ctx, job.companyId);
+    return job.companyId;
+  },
+});
+
+/**
+ * Post a job for a company the caller administers.
+ *
+ * ACTION: when the company is at the free-tier open-job cap, the Company Pro
+ * plan is verified against Clerk Billing via the Backend SDK (an outbound
+ * HTTP call — never JWT claims). The write happens in createJobInternal,
+ * which re-asserts admin and re-checks the cap transactionally unless pro
+ * was verified here.
+ */
+export const createJob = action({
   args: { companyId: v.id("companies"), ...jobEditableFields },
+  returns: v.id("jobs"),
+  handler: async (ctx, args): Promise<Id<"jobs">> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Not authenticated");
+    let capExempt = false;
+    const atCap: boolean = await ctx.runQuery(internal.jobs.wouldExceedFreeCap, {
+      companyId: args.companyId,
+    });
+    if (atCap) {
+      capExempt = await orgHasCompanyProBilling(await getActiveOrgId(ctx));
+      if (!capExempt) throw new Error(FREE_CAP_ERROR);
+    }
+    return await ctx.runMutation(internal.jobs.createJobInternal, {
+      ...args,
+      capExempt,
+    });
+  },
+});
+
+/**
+ * Transactional half of createJob. Auth is NOT delegated to the action:
+ * this re-asserts company admin itself. `capExempt` is only true when the
+ * action verified Company Pro against Clerk Billing.
+ */
+export const createJobInternal = internalMutation({
+  args: {
+    companyId: v.id("companies"),
+    ...jobEditableFields,
+    capExempt: v.boolean(),
+  },
   returns: v.id("jobs"),
   handler: async (ctx, args) => {
     const { company, me } = await assertCompanyAdmin(ctx, args.companyId);
@@ -431,7 +518,7 @@ export const createJob = mutation({
     if (args.salaryMin < 0 || args.salaryMax < args.salaryMin) {
       throw new Error("Salary range is invalid");
     }
-    await assertOpenJobSlot(ctx, company._id);
+    if (!args.capExempt) await assertOpenJobSlot(ctx, company._id);
     return await ctx.db.insert("jobs", {
       title,
       companyId: company._id,
@@ -480,18 +567,67 @@ export const updateJob = mutation({
   },
 });
 
-/** Open / close a job (closed jobs disappear from search). */
-export const setJobStatus = mutation({
+/**
+ * Open / close a job (closed jobs disappear from search).
+ *
+ * ACTION: reopening a job can push a free company past the open-job cap, so
+ * when that would happen the Company Pro plan is verified against Clerk
+ * Billing via the Backend SDK. The write happens in setJobStatusInternal,
+ * which re-asserts admin and re-checks the cap unless pro was verified here.
+ */
+export const setJobStatus = action({
   args: {
     jobId: v.id("jobs"),
     status: v.union(v.literal("open"), v.literal("closed")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Not authenticated");
+    let capExempt = false;
+    if (args.status === "open") {
+      const companyId: Id<"companies"> = await ctx.runQuery(
+        internal.jobs.getJobCompanyId,
+        { jobId: args.jobId },
+      );
+      const atCap: boolean = await ctx.runQuery(
+        internal.jobs.wouldExceedFreeCap,
+        { companyId, excludeJobId: args.jobId },
+      );
+      if (atCap) {
+        capExempt = await orgHasCompanyProBilling(await getActiveOrgId(ctx));
+        if (!capExempt) throw new Error(FREE_CAP_ERROR);
+      }
+    }
+    return await ctx.runMutation(internal.jobs.setJobStatusInternal, {
+      jobId: args.jobId,
+      status: args.status,
+      capExempt,
+    });
+  },
+});
+
+/**
+ * Transactional half of setJobStatus. Re-asserts company admin itself.
+ * `capExempt` is only true when the action verified Company Pro against
+ * Clerk Billing.
+ */
+export const setJobStatusInternal = internalMutation({
+  args: {
+    jobId: v.id("jobs"),
+    status: v.union(v.literal("open"), v.literal("closed")),
+    capExempt: v.boolean(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const job = await ctx.db.get(args.jobId);
     if (job === null) throw new Error("Job not found");
     await assertCompanyAdmin(ctx, job.companyId);
-    if (args.status === "open" && job.status === "closed") {
+    if (
+      args.status === "open" &&
+      job.status === "closed" &&
+      !args.capExempt
+    ) {
       await assertOpenJobSlot(ctx, job.companyId, job._id);
     }
     await ctx.db.patch(job._id, { status: args.status });

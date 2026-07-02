@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { toast } from "sonner";
 import {
   Building2,
@@ -37,7 +37,8 @@ export default function CompanyDashboardPage() {
   );
   const setLogo = useMutation(api.files.setCompanyLogo);
   const setCover = useMutation(api.files.setCompanyCover);
-  const setJobStatus = useMutation(api.jobs.setJobStatus);
+  // setJobStatus is an action — reopening checks org billing via Clerk.
+  const setJobStatus = useAction(api.jobs.setJobStatus);
   const deleteJob = useMutation(api.jobs.deleteJob);
   const deleteCompany = useMutation(api.companies.deleteCompany);
 
@@ -223,8 +224,12 @@ export default function CompanyDashboardPage() {
                             status: closed ? "open" : "closed",
                           });
                           toast.success(closed ? "Job reopened" : "Job closed");
-                        } catch {
-                          toast.error("Could not update the job");
+                        } catch (err) {
+                          toast.error(
+                            err instanceof Error
+                              ? err.message
+                              : "Could not update the job",
+                          );
                         }
                       }}
                     >

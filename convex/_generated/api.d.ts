@@ -10,6 +10,7 @@
 
 import type * as ai from "../ai.js";
 import type * as applications from "../applications.js";
+import type * as clerkBilling from "../clerkBilling.js";
 import type * as companies from "../companies.js";
 import type * as demo from "../demo.js";
 import type * as drafts from "../drafts.js";
@@ -35,6 +36,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   ai: typeof ai;
   applications: typeof applications;
+  clerkBilling: typeof clerkBilling;
   companies: typeof companies;
   demo: typeof demo;
   drafts: typeof drafts;

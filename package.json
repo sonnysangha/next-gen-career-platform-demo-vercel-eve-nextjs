@@ -10,7 +10,10 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "convex": "convex dev",
-    "seed": "convex run seed:run"
+    "seed": "convex run seed:run",
+    "agent": "eve dev",
+    "agent:build": "eve build",
+    "agent:info": "eve info"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
