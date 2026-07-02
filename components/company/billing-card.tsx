@@ -22,7 +22,7 @@ const COMPANY_PLAN_ID = process.env.NEXT_PUBLIC_CLERK_COMPANY_PLAN_ID ?? "";
 export function CompanyBillingCard({ openJobs }: { openJobs: number }) {
   const { has, orgId } = useAuth();
   const { organization } = useOrganization();
-  const isPro = has?.({ plan: COMPANY_PRO_PLAN }) ?? false;
+  const isPro = has?.({ plan: `org:${COMPANY_PRO_PLAN}` }) ?? false;
 
   if (isPro) {
     return (

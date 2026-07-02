@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { toast } from "sonner";
 import { Pencil, Plus } from "lucide-react";
 import { api } from "@/convex/_generated/api";
@@ -54,7 +54,8 @@ export function JobDialog({
 }) {
   const isEdit = !!job;
   const [open, setOpen] = useState(false);
-  const createJob = useMutation(api.jobs.createJob);
+  // createJob is an action — it checks org billing via the Clerk Billing SDK.
+  const createJob = useAction(api.jobs.createJob);
   const updateJob = useMutation(api.jobs.updateJob);
 
   const [title, setTitle] = useState(job?.title ?? "");

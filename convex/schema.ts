@@ -152,6 +152,23 @@ export default defineSchema({
       v.literal("rejected"),
       v.literal("withdrawn"),
     ),
+    // Every stage transition, oldest first. Rows created before this field
+    // existed have it undefined — the UI synthesizes "submitted @ createdAt".
+    statusHistory: v.optional(
+      v.array(
+        v.object({
+          status: v.union(
+            v.literal("submitted"),
+            v.literal("reviewed"),
+            v.literal("interviewing"),
+            v.literal("offer"),
+            v.literal("rejected"),
+            v.literal("withdrawn"),
+          ),
+          at: v.number(),
+        }),
+      ),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

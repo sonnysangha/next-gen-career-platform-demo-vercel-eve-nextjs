@@ -1,10 +1,16 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import {
+  query,
+  mutation,
+  action,
+  internalMutation,
+} from "./_generated/server";
+import { internal } from "./_generated/api";
 import {
   getUserByIdentity,
   getProfileForUser,
   assertCompanyAdmin,
-  orgHasCompanyPro,
+  getActiveOrgId,
   notify,
   applicationDocValidator,
   applicationStatusValidator,
@@ -14,6 +20,7 @@ import {
   profileDocValidator,
   skillDocValidator,
 } from "./model";
+import { orgHasCompanyProBilling } from "./clerkBilling";
 import { computeMatchScore } from "./jobs";
 
 /** Apply to a job. Re-applying after a withdrawal re-activates the row. */
@@ -43,6 +50,7 @@ export const apply = mutation({
       )
       .unique();
 
+    const now = Date.now();
     let applicationId;
     if (existing !== null) {
       if (existing.status !== "withdrawn") {
@@ -51,7 +59,13 @@ export const apply = mutation({
       await ctx.db.patch(existing._id, {
         status: "submitted",
         coverNote,
-        updatedAt: Date.now(),
+        statusHistory: [
+          ...(existing.statusHistory ?? [
+            { status: "submitted" as const, at: existing.createdAt },
+          ]),
+          { status: "submitted" as const, at: now },
+        ],
+        updatedAt: now,
       });
       applicationId = existing._id;
     } else {
@@ -61,8 +75,9 @@ export const apply = mutation({
         companyId: job.companyId,
         coverNote,
         status: "submitted",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        statusHistory: [{ status: "submitted", at: now }],
+        createdAt: now,
+        updatedAt: now,
       });
     }
 
@@ -96,9 +111,16 @@ export const withdraw = mutation({
       )
       .unique();
     if (existing === null) throw new Error("Application not found");
+    const now = Date.now();
     await ctx.db.patch(existing._id, {
       status: "withdrawn",
-      updatedAt: Date.now(),
+      statusHistory: [
+        ...(existing.statusHistory ?? [
+          { status: "submitted" as const, at: existing.createdAt },
+        ]),
+        { status: "withdrawn" as const, at: now },
+      ],
+      updatedAt: now,
     });
     return null;
   },
@@ -149,11 +171,9 @@ const applicantValidator = v.object({
 
 /**
  * Applicants for one job (or the whole company when jobId is omitted),
- * newest first, enriched with the applicant's public profile. Caller must
- * administer the company.
- *
- * Org billing: candidate skill insights are a Company Pro feature — free
- * companies get an empty `skills` array (the UI shows an upgrade hint).
+ * newest first, enriched with the applicant's public profile and skills.
+ * Caller must administer the company. Pro-only presentation (skill
+ * insights, etc.) is gated in the UI via Clerk's `has()`, not here.
  */
 export const getApplicantsForCompany = query({
   args: {
@@ -163,7 +183,6 @@ export const getApplicantsForCompany = query({
   returns: v.array(applicantValidator),
   handler: async (ctx, args) => {
     await assertCompanyAdmin(ctx, args.companyId);
-    const pro = await orgHasCompanyPro(ctx);
 
     let applications;
     if (args.jobId !== undefined) {
@@ -192,7 +211,7 @@ export const getApplicantsForCompany = query({
                 .withIndex("by_userId", (q) => q.eq("userId", user._id))
                 .unique();
         const skills =
-          user === null || !pro
+          user === null
             ? []
             : await ctx.db
                 .query("skills")
@@ -223,10 +242,42 @@ export const getApplicantsForCompany = query({
  * company; the applicant gets a status notification.
  *
  * Org billing: the free tier can mark applicants reviewed/rejected; the
- * interview and offer stages require Company Pro (checked via the org's
- * billing claims on the JWT).
+ * interview and offer stages require Company Pro. This is an ACTION because
+ * the plan is verified against Clerk Billing via the Backend SDK (an
+ * outbound HTTP call) — never via JWT claims. The database work runs in
+ * updateStatusInternal, which re-asserts company admin under the same
+ * caller identity.
  */
-export const updateStatus = mutation({
+export const updateStatus = action({
+  args: {
+    applicationId: v.id("applications"),
+    status: applicationStatusValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Not authenticated");
+    if (args.status === "interviewing" || args.status === "offer") {
+      const orgId = await getActiveOrgId(ctx);
+      if (!(await orgHasCompanyProBilling(orgId))) {
+        throw new Error(
+          "Interview and offer stages are a Company Pro feature — upgrade your organization to unlock the full pipeline.",
+        );
+      }
+    }
+    return await ctx.runMutation(internal.applications.updateStatusInternal, {
+      applicationId: args.applicationId,
+      status: args.status,
+    });
+  },
+});
+
+/**
+ * Transactional half of updateStatus. Auth is NOT delegated to the action:
+ * this re-asserts company admin itself (ctx.auth carries the same caller
+ * identity through ctx.runMutation).
+ */
+export const updateStatusInternal = internalMutation({
   args: {
     applicationId: v.id("applications"),
     status: applicationStatusValidator,
@@ -239,19 +290,18 @@ export const updateStatus = mutation({
     if (args.status === "withdrawn") {
       throw new Error("Only the applicant can withdraw an application");
     }
-    if (
-      (args.status === "interviewing" || args.status === "offer") &&
-      !(await orgHasCompanyPro(ctx))
-    ) {
-      throw new Error(
-        "Interview and offer stages are a Company Pro feature — upgrade your organization to unlock the full pipeline.",
-      );
-    }
     if (app.status === args.status) return null;
 
+    const now = Date.now();
     await ctx.db.patch(app._id, {
       status: args.status,
-      updatedAt: Date.now(),
+      statusHistory: [
+        ...(app.statusHistory ?? [
+          { status: "submitted" as const, at: app.createdAt },
+        ]),
+        { status: args.status, at: now },
+      ],
+      updatedAt: now,
     });
 
     const job = await ctx.db.get(app.jobId);

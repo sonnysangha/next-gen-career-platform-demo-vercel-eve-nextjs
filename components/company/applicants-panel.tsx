@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { toast } from "sonner";
-import { Lock, Sparkles, Users } from "lucide-react";
+import { Columns3, Lock, Rows3, Sparkles, Users } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { UserAvatar } from "@/components/user-avatar";
@@ -19,8 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { timeAgo } from "@/lib/format";
 import { COMPANY_PRO_PLAN } from "@/lib/ai-features";
+import {
+  PipelineBoard,
+  type PipelineStage,
+} from "@/components/company/pipeline-board";
+import { ApplicantDetailDialog } from "@/components/company/applicant-detail-dialog";
 
 const PIPELINE = [
   "submitted",
@@ -67,15 +73,30 @@ export function ApplicantsPanel({
   jobs: { _id: Id<"jobs">; title: string }[];
 }) {
   const { has } = useAuth();
-  const isPro = has?.({ plan: COMPANY_PRO_PLAN }) ?? false;
+  // `org:` scope — the pipeline is a Company Pro (organization plan) feature.
+  const isPro = has?.({ plan: `org:${COMPANY_PRO_PLAN}` }) ?? false;
   const [jobFilter, setJobFilter] = useState<string>("all");
+  const [view, setView] = useState<"board" | "list">("board");
+  const [detailId, setDetailId] = useState<Id<"applications"> | null>(null);
   const applicants = useQuery(api.applications.getApplicantsForCompany, {
     companyId,
     jobId: jobFilter === "all" ? undefined : (jobFilter as Id<"jobs">),
   });
-  const updateStatus = useMutation(api.applications.updateStatus);
+  const updateStatus = useAction(api.applications.updateStatus);
 
   const jobTitle = new Map(jobs.map((j) => [j._id as string, j.title]));
+
+  const moveTo = async (
+    applicationId: Id<"applications">,
+    status: PipelineStage,
+  ) => {
+    try {
+      await updateStatus({ applicationId, status });
+      toast.success(`Moved to ${APPLICATION_STATUS_LABEL[status]}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Update failed");
+    }
+  };
 
   return (
     <section className="rounded-xl border bg-card p-5">
@@ -93,19 +114,43 @@ export function ApplicantsPanel({
             </Badge>
           )}
         </h2>
-        <Select value={jobFilter} onValueChange={(v) => setJobFilter(v ?? "all")}>
-          <SelectTrigger className="h-8 w-52">
-            <SelectValue placeholder="All jobs" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All jobs</SelectItem>
-            {jobs.map((j) => (
-              <SelectItem key={j._id} value={j._id}>
-                {j.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={jobFilter} onValueChange={(v) => setJobFilter(v ?? "all")}>
+            <SelectTrigger className="h-8 w-52">
+              <SelectValue placeholder="All jobs" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All jobs</SelectItem>
+              {jobs.map((j) => (
+                <SelectItem key={j._id} value={j._id}>
+                  {j.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex rounded-md border p-0.5">
+            <Button
+              variant={view === "board" ? "secondary" : "ghost"}
+              size="xs"
+              className="gap-1"
+              onClick={() => setView("board")}
+              aria-pressed={view === "board"}
+            >
+              <Columns3 className="h-3.5 w-3.5" />
+              Board
+            </Button>
+            <Button
+              variant={view === "list" ? "secondary" : "ghost"}
+              size="xs"
+              className="gap-1"
+              onClick={() => setView("list")}
+              aria-pressed={view === "list"}
+            >
+              <Rows3 className="h-3.5 w-3.5" />
+              List
+            </Button>
+          </div>
+        </div>
       </div>
 
       {applicants === undefined ? (
@@ -120,14 +165,27 @@ export function ApplicantsPanel({
           title="No applicants yet"
           description="Applications to your open roles will show up here."
         />
+      ) : view === "board" ? (
+        <PipelineBoard
+          applicants={applicants.filter((a) => a.status !== "withdrawn")}
+          jobTitle={jobTitle}
+          isPro={isPro}
+          onMove={moveTo}
+          onOpen={setDetailId}
+        />
       ) : (
         <div className="space-y-3">
           {applicants.map((app) => (
-            <div key={app._id} className="rounded-lg border p-3">
+            <div
+              key={app._id}
+              className="cursor-pointer rounded-lg border p-3 transition-colors hover:border-primary/40"
+              onClick={() => setDetailId(app._id)}
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <Link
                   href={app.applicant ? `/in/${app.applicant.username}` : "#"}
                   className="flex min-w-0 items-center gap-3"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <UserAvatar
                     name={app.applicant?.name ?? "Unknown"}
@@ -143,7 +201,10 @@ export function ApplicantsPanel({
                     </p>
                   </div>
                 </Link>
-                <div className="flex items-center gap-2">
+                <div
+                  className="flex items-center gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <Badge
                     className={`border-transparent ${applicationStatusTone(app.status)}`}
                   >
@@ -218,6 +279,23 @@ export function ApplicantsPanel({
           ))}
         </div>
       )}
+
+      <ApplicantDetailDialog
+        app={applicants?.find((a) => a._id === detailId) ?? null}
+        jobTitle={
+          detailId !== null
+            ? (jobTitle.get(
+                (applicants?.find((a) => a._id === detailId)?.jobId ??
+                  "") as string,
+              ) ?? "a role")
+            : "a role"
+        }
+        isPro={isPro}
+        onMove={moveTo}
+        onOpenChange={(open) => {
+          if (!open) setDetailId(null);
+        }}
+      />
     </section>
   );
 }
