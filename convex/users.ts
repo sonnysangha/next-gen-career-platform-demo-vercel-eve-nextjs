@@ -3,8 +3,7 @@ import { query, mutation } from "./_generated/server";
 import {
   getUserByIdentity,
   getProfileForUser,
-  baseUsernameFrom,
-  uniqueUsername,
+  createUserFromIdentity,
   userDocValidator,
   profileDocValidator,
 } from "./model";
@@ -84,31 +83,6 @@ export const upsertCurrentUser = mutation({
       return refreshed;
     }
 
-    const username = await uniqueUsername(ctx, baseUsernameFrom(email, name));
-    const now = Date.now();
-
-    const userId = await ctx.db.insert("users", {
-      clerkId: identity.subject,
-      name,
-      email,
-      imageUrl,
-      username,
-      createdAt: now,
-    });
-
-    // Seed an empty-ish profile so the UI always has a row to edit.
-    await ctx.db.insert("profiles", {
-      userId,
-      headline: "",
-      about: "",
-      location: "",
-      targetRole: undefined,
-      openToWork: false,
-      coverImageUrl: undefined,
-    });
-
-    const created = await ctx.db.get(userId);
-    if (created === null) throw new Error("Failed to create user");
-    return created;
+    return await createUserFromIdentity(ctx, identity);
   },
 });

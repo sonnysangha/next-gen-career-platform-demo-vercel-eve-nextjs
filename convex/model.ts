@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import type { UserIdentity } from "convex/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { QueryCtx, MutationCtx } from "./_generated/server";
 
@@ -14,17 +15,66 @@ import { QueryCtx, MutationCtx } from "./_generated/server";
 
 /**
  * Resolve the current signed-in user from the Clerk identity.
- * Returns null when there is no authenticated caller or no matching users row.
+ * Returns null when there is no authenticated caller. In queries, also returns
+ * null when no users row matches. In mutations, a missing row is recreated
+ * from the identity claims instead — a signed-in user must never be orphaned
+ * (e.g. after `pnpm seed` wipes the users table mid-session).
  */
 export async function getUserByIdentity(
   ctx: QueryCtx | MutationCtx,
 ): Promise<Doc<"users"> | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (identity === null) return null;
-  return await ctx.db
+  const existing = await ctx.db
     .query("users")
     .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
     .unique();
+  if (existing !== null) return existing;
+  if ("insert" in ctx.db) {
+    return await createUserFromIdentity(ctx as MutationCtx, identity);
+  }
+  return null;
+}
+
+/**
+ * Create the users row (+ blank profile) from Clerk identity token claims.
+ * Shared by users.upsertCurrentUser and the mutation path of
+ * getUserByIdentity.
+ */
+export async function createUserFromIdentity(
+  ctx: MutationCtx,
+  identity: UserIdentity,
+): Promise<Doc<"users">> {
+  const name =
+    identity.name ??
+    (typeof identity.givenName === "string" ? identity.givenName : null) ??
+    identity.nickname ??
+    "New Member";
+  const email = identity.email ?? `${identity.subject}@users.noreply`;
+  const imageUrl =
+    typeof identity.pictureUrl === "string" ? identity.pictureUrl : undefined;
+
+  const username = await uniqueUsername(ctx, baseUsernameFrom(email, name));
+  const userId = await ctx.db.insert("users", {
+    clerkId: identity.subject,
+    name,
+    email,
+    imageUrl,
+    username,
+    createdAt: Date.now(),
+  });
+  await ctx.db.insert("profiles", {
+    userId,
+    headline: "",
+    about: "",
+    location: "",
+    targetRole: undefined,
+    openToWork: false,
+    coverImageUrl: undefined,
+  });
+  const created = await ctx.db.get(userId);
+  if (created === null) throw new Error("Failed to create user");
+  return created;
 }
 
 /** Resolve a users row from a Clerk userId string (used by the Eve bridge). */
