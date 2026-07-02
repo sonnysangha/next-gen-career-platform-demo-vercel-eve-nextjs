@@ -128,3 +128,12 @@
     @apply font-sans;
   }
 }
+/* Clerk checkout / subscription-details drawers portal into <body> with a
+   z-index below the sticky top nav (z-40), so the drawer header gets hidden
+   behind it. Lift every Clerk drawer above the nav. */
+.cl-drawerRoot,
+.cl-drawerBackdrop,
+.cl-drawerContent,
+.cl-drawerConfirmationRoot {
+  z-index: 60 !important;
+}
