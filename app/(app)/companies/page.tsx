@@ -22,7 +22,9 @@ export default function CompaniesPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Companies</h1>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          Companies
+        </h1>
         {myCompany === null && (
           <Button
             render={<Link href="/onboarding/company" />}

@@ -21,7 +21,9 @@ export default async function AgentPage() {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <Lock className="h-7 w-7" />
         </div>
-        <h1 className="text-2xl font-semibold">The AI Career Agent is a Pro feature</h1>
+        <h1 className="font-heading text-3xl font-semibold tracking-tight">
+          The AI Career Agent is a Pro feature
+        </h1>
         <p className="mt-2 text-muted-foreground">
           Upgrade to put an AI agent to work on your career — grounded in your real
           CareerConnect profile and jobs.

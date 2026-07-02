@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
 import { useQuery, useAction } from "convex/react";
 import { toast } from "sonner";
 import { Columns3, Eye, EyeOff, Lock, Rows3, Sparkles, Users } from "lucide-react";
@@ -22,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { timeAgo } from "@/lib/format";
-import { COMPANY_PRO_PLAN } from "@/lib/ai-features";
+import { useCompanyPro } from "@/lib/use-billing";
 import {
   PipelineBoard,
   type PipelineStage,
@@ -68,20 +67,26 @@ export function applicationStatusTone(status: string): string {
 export function ApplicantsPanel({
   companyId,
   jobs,
+  lockedJobId,
 }: {
   companyId: Id<"companies">;
   jobs: { _id: Id<"jobs">; title: string }[];
+  // When set, the panel only shows this job's applicants and the job filter
+  // is hidden (used by the per-job full page).
+  lockedJobId?: Id<"jobs">;
 }) {
   const router = useRouter();
-  const { has } = useAuth();
-  // `org:` scope — the pipeline is a Company Pro (organization plan) feature.
-  const isPro = has?.({ plan: `org:${COMPANY_PRO_PLAN}` }) ?? false;
-  const [jobFilter, setJobFilter] = useState<string>("all");
+  // Billing-API-backed check — the pipeline is a Company Pro (org) feature.
+  const { isPro } = useCompanyPro();
+  const [jobFilter, setJobFilter] = useState<string>(
+    lockedJobId ? (lockedJobId as string) : "all",
+  );
   const [view, setView] = useState<"board" | "list">("board");
   const [showRejected, setShowRejected] = useState(false);
+  const effectiveJobId = lockedJobId ?? (jobFilter === "all" ? undefined : (jobFilter as Id<"jobs">));
   const applicants = useQuery(api.applications.getApplicantsForCompany, {
     companyId,
-    jobId: jobFilter === "all" ? undefined : (jobFilter as Id<"jobs">),
+    jobId: effectiveJobId,
   });
   const updateStatus = useAction(api.applications.updateStatus);
 
@@ -144,19 +149,21 @@ export function ApplicantsPanel({
               </Badge>
             )}
           </Button>
-          <Select value={jobFilter} onValueChange={(v) => setJobFilter(v ?? "all")}>
-            <SelectTrigger className="h-8 w-52">
-              <SelectValue placeholder="All jobs" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All jobs</SelectItem>
-              {jobs.map((j) => (
-                <SelectItem key={j._id} value={j._id}>
-                  {j.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {!lockedJobId && (
+            <Select value={jobFilter} onValueChange={(v) => setJobFilter(v ?? "all")}>
+              <SelectTrigger className="h-8 w-52">
+                <SelectValue placeholder="All jobs" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All jobs</SelectItem>
+                {jobs.map((j) => (
+                  <SelectItem key={j._id} value={j._id}>
+                    {j.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <div className="flex rounded-md border p-0.5">
             <Button
               variant={view === "board" ? "secondary" : "ghost"}

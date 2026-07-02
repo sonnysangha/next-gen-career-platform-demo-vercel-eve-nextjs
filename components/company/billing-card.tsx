@@ -9,20 +9,21 @@ import {
 import { Building2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { COMPANY_PRO_PLAN, FREE_OPEN_JOB_LIMIT } from "@/lib/ai-features";
+import { FREE_OPEN_JOB_LIMIT } from "@/lib/ai-features";
+import { useCompanyPro } from "@/lib/use-billing";
 
 const COMPANY_PLAN_ID = process.env.NEXT_PUBLIC_CLERK_COMPANY_PLAN_ID ?? "";
 
 /**
  * Org-billing status card for the company dashboard: shows the active plan,
  * free-tier job-slot usage, and the upgrade / manage-subscription actions.
- * Billing is org-scoped — Clerk resolves `has({ plan })` and the checkout
- * against the ACTIVE organization.
+ * Billing is org-scoped — the subscription and checkout both resolve against
+ * the ACTIVE organization.
  */
 export function CompanyBillingCard({ openJobs }: { openJobs: number }) {
-  const { has, orgId } = useAuth();
+  const { orgId } = useAuth();
   const { organization } = useOrganization();
-  const isPro = has?.({ plan: `org:${COMPANY_PRO_PLAN}` }) ?? false;
+  const { isPro } = useCompanyPro();
 
   if (isPro) {
     return (

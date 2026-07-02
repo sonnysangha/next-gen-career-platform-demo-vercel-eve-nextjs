@@ -68,7 +68,9 @@ export default function CompanyOnboardingPage() {
             <Building2 className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold">Set up your organization</h1>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight">
+              Set up your organization
+            </h1>
             <p className="text-sm text-muted-foreground">
               Create an organization or accept an invitation — your company
               page and job posts hang off it, and teammates manage them with
@@ -131,7 +133,9 @@ export default function CompanyOnboardingPage() {
           <Building2 className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold">Publish your company page</h1>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            Publish your company page
+          </h1>
           <p className="text-sm text-muted-foreground">
             “{activeOrg.name}” is ready — add the public details and start
             posting jobs.

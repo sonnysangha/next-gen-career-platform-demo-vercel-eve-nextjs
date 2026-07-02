@@ -17,8 +17,8 @@ export function Logo({
         <Waypoints className="h-5 w-5" />
       </span>
       {showWordmark && (
-        <span className="text-lg font-semibold tracking-tight">
-          Career<span className="text-primary">Connect</span>
+        <span className="font-heading text-xl font-semibold tracking-tight">
+          Career<span className="italic text-primary">Connect</span>
         </span>
       )}
     </Link>

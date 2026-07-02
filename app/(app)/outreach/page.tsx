@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation } from "convex/react";
-import { useAuth } from "@clerk/nextjs";
+import { usePersonalPro } from "@/lib/use-billing";
 import { toast } from "sonner";
 import { MessagesSquare, Mail, Send, Trash2, Copy } from "lucide-react";
 import { api } from "@/convex/_generated/api";
@@ -11,22 +11,22 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AI_FEATURES } from "@/lib/ai-features";
 import { timeAgo } from "@/lib/format";
 
 export default function OutreachPage() {
-  const { has } = useAuth();
   const drafts = useQuery(api.drafts.getMyOutreachDrafts, {});
   const deleteDraft = useMutation(api.drafts.deleteOutreachDraft);
-  // `user:` scope — personal Pro unlocks this even while an org is active.
-  const outreachLocked = !(
-    has?.({ feature: `user:${AI_FEATURES.outreach_writer}` }) ?? false
-  );
+  // Billing-API-backed check — personal Pro unlocks this even while an org
+  // is active (the session token only carries the active payer's plans).
+  const { isPro: personalPro } = usePersonalPro();
+  const outreachLocked = !personalPro;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Outreach</h1>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          Outreach
+        </h1>
       </div>
 
       <div className="rounded-xl border bg-card p-4">

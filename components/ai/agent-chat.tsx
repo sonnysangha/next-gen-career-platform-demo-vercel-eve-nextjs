@@ -10,6 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Markdown } from "@/components/ai/markdown";
 import { cn } from "@/lib/utils";
+import {
+  extractAnalyzedJobTitle,
+  extractRelevantJobsTargetRole,
+  filterJobsForAnalyzedRole,
+} from "./agent-chat-helpers";
 
 const SUGGESTED = [
   "Improve my profile for Next.js AI Engineer roles",
@@ -131,43 +136,48 @@ export function AgentChat() {
           </div>
         )}
 
-        {messages.map((message) => (
-          <div key={message.id}>
-            {message.role === "user" ? (
-              <div className="flex justify-end">
-                <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground">
-                  {message.parts
-                    .filter((p) => p.type === "text")
-                    .map((p, i) => (
-                      <p key={i} className="whitespace-pre-wrap">
-                        {p.text}
-                      </p>
+        {messages.map((message) => {
+          const analyzedJobTitle = extractAnalyzedJobTitle(message.parts);
+
+          return (
+            <div key={message.id}>
+              {message.role === "user" ? (
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground">
+                    {message.parts
+                      .filter((p) => p.type === "text")
+                      .map((p, i) => (
+                        <p key={i} className="whitespace-pre-wrap">
+                          {p.text}
+                        </p>
+                      ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    {message.parts.map((part, i) => (
+                      <PartView
+                        key={i}
+                        part={part}
+                        busy={busy}
+                        analyzedJobTitle={analyzedJobTitle}
+                        onAnswer={answer}
+                        onFreeform={submit}
+                      />
                     ))}
+                    {message.id === lastMessage?.id && showThinking && (
+                      <ThinkingDots />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex gap-3">
-                <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Sparkles className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1 space-y-2">
-                  {message.parts.map((part, i) => (
-                    <PartView
-                      key={i}
-                      part={part}
-                      busy={busy}
-                      onAnswer={answer}
-                      onFreeform={submit}
-                    />
-                  ))}
-                  {message.id === lastMessage?.id && showThinking && (
-                    <ThinkingDots />
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
 
         {showThinking && lastMessage?.role !== "assistant" && (
           <div className="flex gap-3">
@@ -266,9 +276,11 @@ function PartView({
   busy,
   onAnswer,
   onFreeform,
+  analyzedJobTitle,
 }: {
   part: AnyPart;
   busy: boolean;
+  analyzedJobTitle?: string;
   onAnswer: (requestId: string, optionId: string) => void;
   onFreeform: (text: string) => void;
 }) {
@@ -304,7 +316,10 @@ function PartView({
     // Rich job cards once ranked matches arrive from get_relevant_jobs.
     if (part.toolName === "get_relevant_jobs") {
       const jobs = extractJobs(part.output ?? part.result);
-      if (jobs.length > 0) return <JobCards jobs={jobs} />;
+      const targetRole =
+        analyzedJobTitle ?? extractRelevantJobsTargetRole(part);
+      const visibleJobs = filterJobsForAnalyzedRole(jobs, targetRole);
+      if (visibleJobs.length > 0) return <JobCards jobs={visibleJobs} />;
     }
 
     // Tool / subagent activity — a subtle chip, only for known tools. Show a

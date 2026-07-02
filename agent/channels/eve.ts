@@ -5,6 +5,7 @@ import {
   type AuthFn,
 } from "eve/channels/auth";
 import { createClerkClient } from "@clerk/backend";
+import { userSubscriptionIsPro } from "@/lib/billing";
 
 /**
  * Route auth for the Eve HTTP channel.
@@ -27,8 +28,10 @@ function clerkAuth(): AuthFn<Request> {
     // Not signed in → skip; the walk falls through (localDev in dev, else 401).
     if (!auth || !auth.userId) return null;
 
-    // Pro gate: enforce entitlement before the agent can run.
-    const isPro = auth.has({ plan: "pro" });
+    // Pro gate: enforce entitlement before the agent can run. Checked via
+    // the Billing API — session-token claims only carry the active payer's
+    // plans, so they can't answer personal-plan questions in org context.
+    const isPro = await userSubscriptionIsPro(clerk, auth.userId);
     if (!isPro) {
       throw new ForbiddenError({
         message: "Upgrade to Pro to use the AI Career Agent.",

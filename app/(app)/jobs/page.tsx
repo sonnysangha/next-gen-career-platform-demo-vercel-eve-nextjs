@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useAction } from "convex/react";
-import { useAuth } from "@clerk/nextjs";
+import { usePersonalPro } from "@/lib/use-billing";
 import {
   Search,
   Briefcase,
@@ -37,15 +37,13 @@ import {
   seniorityLabel,
   workModeLabel,
 } from "@/lib/format";
-import { AI_FEATURES } from "@/lib/ai-features";
 
 function JobsInner() {
   const params = useSearchParams();
-  const { has } = useAuth();
-  // `user:` scope — personal Pro unlocks this even while an org is active.
-  const jobMatcherLocked = !(
-    has?.({ feature: `user:${AI_FEATURES.job_matcher}` }) ?? false
-  );
+  // Billing-API-backed check — personal Pro unlocks this even while an org
+  // is active (the session token only carries the active payer's plans).
+  const { isPro: personalPro } = usePersonalPro();
+  const jobMatcherLocked = !personalPro;
 
   const [tab, setTab] = useState<string>("browse");
   const [search, setSearch] = useState(params.get("q") ?? "");
@@ -233,7 +231,9 @@ function JobsInner() {
             <div className="space-y-4 rounded-xl border bg-card p-5">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold">{detail.title}</h2>
+                  <h2 className="font-heading text-xl font-semibold tracking-tight">
+                    {detail.title}
+                  </h2>
                   {detail.status === "closed" && (
                     <Badge variant="outline">Closed</Badge>
                   )}

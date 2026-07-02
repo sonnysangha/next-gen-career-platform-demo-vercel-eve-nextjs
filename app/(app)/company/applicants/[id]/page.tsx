@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
 import { useQuery, useAction } from "convex/react";
 import { toast } from "sonner";
 import {
@@ -29,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { timeAgo } from "@/lib/format";
-import { COMPANY_PRO_PLAN } from "@/lib/ai-features";
+import { useCompanyPro } from "@/lib/use-billing";
 import {
   APPLICATION_STATUS_LABEL,
   applicationStatusTone,
@@ -50,8 +49,8 @@ const PIPELINE: PipelineStage[] = [
 /** Full application detail for one applicant, company-admin only. */
 export default function ApplicantDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { has } = useAuth();
-  const isPro = has?.({ plan: `org:${COMPANY_PRO_PLAN}` }) ?? false;
+  // Billing-API-backed check — the pipeline is a Company Pro (org) feature.
+  const { isPro } = useCompanyPro();
   const app = useQuery(api.applications.getApplicantDetail, {
     applicationId: id as Id<"applications">,
   });
@@ -98,7 +97,7 @@ export default function ApplicantDetailPage() {
               className="h-14 w-14"
             />
             <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold">
+              <h1 className="truncate font-heading text-xl font-semibold tracking-tight">
                 {app.applicant?.name ?? "Unknown applicant"}
               </h1>
               <p className="truncate text-sm text-muted-foreground">

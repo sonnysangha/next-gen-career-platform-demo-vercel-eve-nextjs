@@ -69,7 +69,9 @@ export default function CompanyPage() {
           />
           <div className="mt-9 min-w-0 flex-1">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h1 className="text-xl font-semibold">{company.name}</h1>
+              <h1 className="font-heading text-2xl font-semibold tracking-tight">
+                {company.name}
+              </h1>
               {canManage && (
                 <Button
                   render={<Link href="/company" />}

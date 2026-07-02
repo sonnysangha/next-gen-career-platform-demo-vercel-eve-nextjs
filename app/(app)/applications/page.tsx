@@ -33,7 +33,9 @@ export default function ApplicationsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">My applications</h1>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          My applications
+        </h1>
         <p className="text-sm text-muted-foreground">
           Track every role you&apos;ve applied to and where it stands.
         </p>

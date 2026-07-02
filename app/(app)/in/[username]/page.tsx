@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
-import { useAuth } from "@clerk/nextjs";
+import { usePersonalPro } from "@/lib/use-billing";
 import { toast } from "sonner";
 import {
   MapPin,
@@ -34,7 +34,6 @@ import { ImagePickerButton } from "@/components/image-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AI_FEATURES } from "@/lib/ai-features";
 import { timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -65,7 +64,6 @@ function Card({
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
-  const { has } = useAuth();
   const data = useQuery(api.profiles.getProfileByUsername, { username });
   const me = useQuery(api.users.getCurrentUser);
   const drafts = useQuery(api.drafts.getMyProfileDrafts, {});
@@ -81,10 +79,10 @@ export default function ProfilePage() {
   const setAvatar = useMutation(api.files.setMyAvatar);
   const setCover = useMutation(api.files.setMyProfileCover);
 
-  // `user:` scope — personal Pro unlocks this even while an org is active.
-  const optimizerLocked = !(
-    has?.({ feature: `user:${AI_FEATURES.profile_optimizer}` }) ?? false
-  );
+  // Billing-API-backed check — personal Pro unlocks this even while an org
+  // is active (the session token only carries the active payer's plans).
+  const { isPro: personalPro } = usePersonalPro();
+  const optimizerLocked = !personalPro;
 
   if (data === undefined) {
     return <Skeleton className="h-96 w-full rounded-xl" />;
@@ -207,7 +205,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <div className="mt-3">
-            <h1 className="flex items-center gap-1.5 text-xl font-semibold">
+            <h1 className="flex items-center gap-1.5 font-heading text-2xl font-semibold tracking-tight">
               {user.name}
               {profile?.pronouns && (
                 <span className="text-sm font-normal text-muted-foreground">

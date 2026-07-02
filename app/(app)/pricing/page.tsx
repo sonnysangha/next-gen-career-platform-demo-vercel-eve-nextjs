@@ -50,7 +50,7 @@ export default async function PricingPage() {
   return (
     <div className="mx-auto max-w-4xl py-6">
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
           Plans for both sides of the hire
         </h1>
         <p className="mt-2 text-muted-foreground">
@@ -60,7 +60,7 @@ export default async function PricingPage() {
 
       {/* ── For job seekers (personal billing) ────────────────────── */}
       <div className="mb-8 text-center">
-        <h2 className="flex items-center justify-center gap-2 text-2xl font-semibold tracking-tight">
+        <h2 className="flex items-center justify-center gap-2 font-heading text-2xl font-semibold tracking-tight">
           <Sparkles className="h-6 w-6 text-primary" />
           For job seekers
         </h2>

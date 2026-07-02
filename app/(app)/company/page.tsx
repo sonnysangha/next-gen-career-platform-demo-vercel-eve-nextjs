@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
 import {
   Building2,
@@ -11,8 +11,6 @@ import {
   MapPin,
   Trash2,
   Users,
-  CircleDot,
-  CircleOff,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { CompanyLogo } from "@/components/company-logo";
@@ -22,11 +20,11 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CompanyEditDialog } from "@/components/company/company-edit-dialog";
 import { CompanyBillingCard } from "@/components/company/billing-card";
 import { JobDialog } from "@/components/company/job-dialog";
+import { JobPostList } from "@/components/company/job-post-list";
 import { ApplicantsPanel } from "@/components/company/applicants-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatSalary, seniorityLabel, workModeLabel, timeAgo } from "@/lib/format";
 
 export default function CompanyDashboardPage() {
   const router = useRouter();
@@ -37,9 +35,6 @@ export default function CompanyDashboardPage() {
   );
   const setLogo = useMutation(api.files.setCompanyLogo);
   const setCover = useMutation(api.files.setCompanyCover);
-  // setJobStatus is an action — reopening checks org billing via Clerk.
-  const setJobStatus = useAction(api.jobs.setJobStatus);
-  const deleteJob = useMutation(api.jobs.deleteJob);
   const deleteCompany = useMutation(api.companies.deleteCompany);
 
   if (company === undefined) {
@@ -130,7 +125,9 @@ export default function CompanyDashboardPage() {
           </div>
 
           <div className="mt-3">
-            <h1 className="text-xl font-semibold">{company.name}</h1>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight">
+              {company.name}
+            </h1>
             <p className="text-sm text-muted-foreground">{company.industry}</p>
             <p className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
@@ -183,92 +180,7 @@ export default function CompanyDashboardPage() {
             No jobs yet — post your first role to start receiving applicants.
           </p>
         ) : (
-          <div className="space-y-2">
-            {jobs.map((job) => {
-              const closed = job.status === "closed";
-              return (
-                <div
-                  key={job._id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate font-medium">{job.title}</p>
-                      <Badge
-                        variant={closed ? "outline" : "secondary"}
-                        className="font-normal"
-                      >
-                        {closed ? "Closed" : "Open"}
-                      </Badge>
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {workModeLabel(job.workMode)} · {seniorityLabel(job.seniority)} ·{" "}
-                      {job.location} ·{" "}
-                      {formatSalary(job.salaryMin, job.salaryMax, job.currency)} ·
-                      posted {timeAgo(job.postedAt)} ago
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {job.applicantCount} applicant
-                      {job.applicantCount === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={async () => {
-                        try {
-                          await setJobStatus({
-                            jobId: job._id,
-                            status: closed ? "open" : "closed",
-                          });
-                          toast.success(closed ? "Job reopened" : "Job closed");
-                        } catch (err) {
-                          toast.error(
-                            err instanceof Error
-                              ? err.message
-                              : "Could not update the job",
-                          );
-                        }
-                      }}
-                    >
-                      {closed ? (
-                        <CircleDot className="h-4 w-4" />
-                      ) : (
-                        <CircleOff className="h-4 w-4" />
-                      )}
-                      {closed ? "Reopen" : "Close"}
-                    </Button>
-                    <JobDialog companyId={company._id} job={job} />
-                    <ConfirmDialog
-                      title="Delete this job?"
-                      description={`"${job.title}" and all of its applications will be permanently removed.`}
-                      onConfirm={async () => {
-                        try {
-                          await deleteJob({ jobId: job._id });
-                          toast.success("Job deleted");
-                        } catch {
-                          toast.error("Could not delete the job");
-                        }
-                      }}
-                      renderTrigger={(open) => (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={open}
-                          aria-label="Delete job"
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <JobPostList companyId={company._id} jobs={jobs} />
         )}
       </section>
 

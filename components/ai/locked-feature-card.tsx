@@ -27,7 +27,7 @@ export function LockedFeatureCard({
           <Lock className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 font-medium">
+          <p className="flex items-center gap-1.5 font-heading text-[17px] font-medium">
             {title}
             <Sparkles className="h-3.5 w-3.5 text-primary" />
           </p>
