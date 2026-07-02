@@ -40,8 +40,9 @@ export function TopNav() {
     return pathname === href || pathname.startsWith(href + "/");
   }
 
-  // Company accounts get their dashboard; everyone else gets an entry point
-  // into the company flow (/company shows a set-up CTA when there's none).
+  // Company accounts get their dashboard; everyone else goes straight into
+  // the B2B flow (/onboarding/company creates the Clerk org + linked company,
+  // and redirects to /company when one already exists).
   const navItems =
     myCompany === undefined
       ? NAV_ITEMS
@@ -52,7 +53,11 @@ export function TopNav() {
           ]
         : [
             ...NAV_ITEMS,
-            { href: "/company", label: "For companies", icon: LayoutDashboard },
+            {
+              href: "/onboarding/company",
+              label: "For companies",
+              icon: LayoutDashboard,
+            },
           ];
 
   return (
