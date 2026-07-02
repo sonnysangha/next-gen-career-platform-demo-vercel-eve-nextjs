@@ -6,14 +6,42 @@ import {
   getUserByIdentity,
   getProfileForUser,
   assertCompanyAdmin,
+  orgHasCompanyPro,
+  FREE_OPEN_JOB_LIMIT,
   jobDocValidator,
   companyDocValidator,
   recruiterDocValidator,
 } from "./model";
 import { cosineSimilarity } from "./embeddings";
+import type { MutationCtx } from "./_generated/server";
 
 /** Jobs with no status are legacy/seeded rows and count as open. */
 const jobIsOpen = (j: Doc<"jobs">) => j.status !== "closed";
+
+/**
+ * Org billing: free companies keep at most FREE_OPEN_JOB_LIMIT jobs open;
+ * Company Pro (checked via the JWT billing claims) removes the cap.
+ * `excludeJobId` ignores the job being transitioned (reopen case).
+ */
+async function assertOpenJobSlot(
+  ctx: MutationCtx,
+  companyId: Id<"companies">,
+  excludeJobId?: Id<"jobs">,
+): Promise<void> {
+  if (await orgHasCompanyPro(ctx)) return;
+  const jobs = await ctx.db
+    .query("jobs")
+    .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+    .collect();
+  const openCount = jobs.filter(
+    (j) => jobIsOpen(j) && j._id !== excludeJobId,
+  ).length;
+  if (openCount >= FREE_OPEN_JOB_LIMIT) {
+    throw new Error(
+      `Free companies can have up to ${FREE_OPEN_JOB_LIMIT} open jobs. Upgrade to Company Pro for unlimited job posts.`,
+    );
+  }
+}
 
 const seniorityValidator = v.union(
   v.literal("intern"),
@@ -399,6 +427,7 @@ export const createJob = mutation({
     if (args.salaryMin < 0 || args.salaryMax < args.salaryMin) {
       throw new Error("Salary range is invalid");
     }
+    await assertOpenJobSlot(ctx, company._id);
     return await ctx.db.insert("jobs", {
       title,
       companyId: company._id,
@@ -458,6 +487,9 @@ export const setJobStatus = mutation({
     const job = await ctx.db.get(args.jobId);
     if (job === null) throw new Error("Job not found");
     await assertCompanyAdmin(ctx, job.companyId);
+    if (args.status === "open" && job.status === "closed") {
+      await assertOpenJobSlot(ctx, job.companyId, job._id);
+    }
     await ctx.db.patch(job._id, { status: args.status });
     return null;
   },

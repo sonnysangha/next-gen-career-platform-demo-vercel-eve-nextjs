@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ImagePickerButton } from "@/components/image-input";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CompanyEditDialog } from "@/components/company/company-edit-dialog";
+import { CompanyBillingCard } from "@/components/company/billing-card";
 import { JobDialog } from "@/components/company/job-dialog";
 import { ApplicantsPanel } from "@/components/company/applicants-panel";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -153,6 +154,11 @@ export default function CompanyDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Org billing */}
+      <CompanyBillingCard
+        openJobs={(jobs ?? []).filter((j) => j.status !== "closed").length}
+      />
 
       {/* Jobs */}
       <section className="rounded-xl border bg-card p-5">

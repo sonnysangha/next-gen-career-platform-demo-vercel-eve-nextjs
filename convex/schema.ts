@@ -2,7 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 /**
- * CareerConnect schema — 19 tables.
+ * CareerConnect schema — 20 tables.
  *
  * Conventions:
  * - Every foreign key uses v.id("<table>").

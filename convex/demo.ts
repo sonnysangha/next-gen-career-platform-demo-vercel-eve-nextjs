@@ -34,6 +34,7 @@ const ALEX = {
     {
       title: "Frontend Developer",
       company: "Brightwave Health",
+      companySlug: "brightwave-health", // linked to the seeded company page
       startDate: "2022-03",
       endDate: undefined, // present
       description:
@@ -43,6 +44,7 @@ const ALEX = {
     {
       title: "Junior Frontend Developer",
       company: "Palette Studio",
+      companySlug: "palette-studio",
       startDate: "2020-06",
       endDate: "2022-02",
       description:
@@ -50,6 +52,19 @@ const ALEX = {
       location: "London, UK",
     },
   ],
+  education: [
+    {
+      school: "University of Manchester",
+      degree: "BSc",
+      field: "Computer Science",
+      startYear: "2016",
+      endYear: "2020",
+      description:
+        "First-class honours. Final-year project: a real-time collaborative whiteboard in React.",
+    },
+  ],
+  // A live application so /applications has data out of the box.
+  appliedJobTitle: "Full Stack AI Developer",
   // Strong frontend skills, deliberately NO AI skills so gaps are obvious.
   skills: [
     "React",
@@ -118,7 +133,7 @@ export const becomeAlex = mutation({
       });
     }
 
-    // ── 3) experiences: replace wholesale ──
+    // ── 3) experiences: replace wholesale, linked to seeded company pages ──
     const oldExperiences = await ctx.db
       .query("experiences")
       .withIndex("by_userId", (q) => q.eq("userId", me._id))
@@ -127,15 +142,39 @@ export const becomeAlex = mutation({
       await ctx.db.delete(exp._id);
     }
     for (const exp of ALEX.experiences) {
+      const linkedCompany = await ctx.db
+        .query("companies")
+        .withIndex("by_slug", (q) => q.eq("slug", exp.companySlug))
+        .unique();
       await ctx.db.insert("experiences", {
         userId: me._id,
         title: exp.title,
         company: exp.company,
-        companyId: undefined,
+        companyId: linkedCompany?._id,
         startDate: exp.startDate,
         endDate: exp.endDate,
         description: exp.description,
         location: exp.location,
+      });
+    }
+
+    // ── 3b) education: replace wholesale ──
+    const oldEducation = await ctx.db
+      .query("education")
+      .withIndex("by_userId", (q) => q.eq("userId", me._id))
+      .collect();
+    for (const edu of oldEducation) {
+      await ctx.db.delete(edu._id);
+    }
+    for (const edu of ALEX.education) {
+      await ctx.db.insert("education", {
+        userId: me._id,
+        school: edu.school,
+        degree: edu.degree,
+        field: edu.field,
+        startYear: edu.startYear,
+        endYear: edu.endYear,
+        description: edu.description,
       });
     }
 
@@ -177,6 +216,36 @@ export const becomeAlex = mutation({
           userId: me._id,
           jobId: targetJob._id,
           savedAt: Date.now(),
+        });
+      }
+    }
+
+    // ── 5b) one live application ("Full Stack AI Developer") so the
+    //        /applications page has data. Idempotent via by_user_and_job. ──
+    let appliedJob = null;
+    for await (const job of ctx.db.query("jobs")) {
+      if (job.title === ALEX.appliedJobTitle && job.status !== "closed") {
+        appliedJob = job;
+        break;
+      }
+    }
+    if (appliedJob !== null) {
+      const existingApplication = await ctx.db
+        .query("applications")
+        .withIndex("by_user_and_job", (q) =>
+          q.eq("userId", me._id).eq("jobId", appliedJob!._id),
+        )
+        .unique();
+      if (existingApplication === null) {
+        await ctx.db.insert("applications", {
+          jobId: appliedJob._id,
+          userId: me._id,
+          companyId: appliedJob.companyId,
+          coverNote:
+            "Hi! I'm a frontend developer with strong React/Next.js experience, working toward AI engineering. I'd love to bring my UI craft to your team while going deep on the AI SDK.",
+          status: "submitted",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
         });
       }
     }

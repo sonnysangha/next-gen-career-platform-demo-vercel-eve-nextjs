@@ -73,6 +73,41 @@ export async function getActiveOrgId(
   return null;
 }
 
+/**
+ * Org-based billing. Keep in sync with lib/ai-features.ts
+ * (COMPANY_PRO_PLAN / FREE_OPEN_JOB_LIMIT) — convex/ can't import from lib/.
+ */
+export const COMPANY_PRO_PLAN = "company_pro";
+export const FREE_OPEN_JOB_LIMIT = 3;
+
+/**
+ * Does the caller's active organization have the Company Pro plan?
+ * Reads the billing plan claims Clerk can put on the Convex JWT:
+ * - `pla` (Clerk session claim format, e.g. "u:free_user o:company_pro")
+ * - `org_plan` (explicit custom claim on the JWT template)
+ * Absent claims mean "not pro" — the free-tier limits apply.
+ */
+export async function orgHasCompanyPro(
+  ctx: QueryCtx | MutationCtx,
+): Promise<boolean> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity === null) return false;
+  const claims = identity as Record<string, unknown>;
+  if (
+    typeof claims.pla === "string" &&
+    claims.pla.split(/\s+/).includes(`o:${COMPANY_PRO_PLAN}`)
+  ) {
+    return true;
+  }
+  if (
+    typeof claims.org_plan === "string" &&
+    claims.org_plan === COMPANY_PRO_PLAN
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /** Is the current caller an admin of this company (org member or owner)? */
 export async function isCompanyAdmin(
   ctx: QueryCtx | MutationCtx,

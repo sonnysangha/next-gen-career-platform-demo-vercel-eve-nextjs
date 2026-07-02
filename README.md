@@ -16,6 +16,9 @@ Gateway) · shadcn/ui + Tailwind v4 · Faker (seed).
 - **Company dashboard** (`/company`) — edit the company page, upload logo/cover, post /
   edit / close / reopen / delete jobs, and move applicants through a hiring pipeline
   (submitted → reviewed → interviewing → offer / rejected).
+- **Org-based billing** — Clerk Billing for **organizations**: Company Free allows 3
+  open jobs; **Company Pro** ($99/mo, billed to the org, shared by all teammates)
+  removes the cap. Upgrade from the dashboard or `/pricing`.
 - **Job applications** — apply with a note, withdraw, and track status at
   `/applications`; companies are notified of new applicants, applicants of status
   changes.
@@ -73,6 +76,22 @@ in `.env.local` and generates `convex/_generated/`.
    clerk enable organizations
    ```
    or the Dashboard → **Organizations** → **Enable organizations**.
+4b. **Org-based billing** (Company Pro plan): enable billing **for organizations**
+   and create the org plan:
+   ```bash
+   clerk enable billing --for organizations
+   clerk config patch --file clerk-org-billing.json   # billing.plans: slug `company_pro` (see clerk config schema --keys billing)
+   ```
+   (or Dashboard → Billing → enable for organizations → create a **Company Pro**
+   plan with slug `company_pro`, $99/mo). Copy the plan id from
+   `clerk api /billing/plans` into `NEXT_PUBLIC_CLERK_COMPANY_PLAN_ID`.
+   Free companies can keep **3** jobs open; Company Pro removes the cap. The
+   subscription belongs to the **organization**, so every teammate shares it.
+   To let Convex enforce the cap server-side, add the billing claim to the
+   `convex` JWT template alongside the org claims:
+   ```json
+   { "org_id": "{{org.id}}", "org_role": "{{org.role}}", "pla": "{{session.pla}}" }
+   ```
 5. **Org claims on the Convex JWT** *(recommended)*: so Convex can authorize company
    mutations by organization membership, add custom claims to the `convex` JWT template
    (Dashboard → JWT Templates → convex → Custom claims):
