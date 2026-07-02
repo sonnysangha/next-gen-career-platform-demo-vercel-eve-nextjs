@@ -1,21 +1,35 @@
 import { SignUp } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Briefcase, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { localRedirectPath } from "@/lib/safe-redirect";
 
 /**
  * Sign-up with an account-type chooser:
  * - Job seeker → default flow, lands on the feed.
  * - Company   → lands on /onboarding/company, which creates a Clerk
  *   Organization and the linked company page.
+ * Already-signed-in visitors are bounced to their destination directly.
  */
 export default async function SignUpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; redirect_url?: string }>;
 }) {
-  const { type } = await searchParams;
+  const [{ userId }, { type, redirect_url }] = await Promise.all([
+    auth(),
+    searchParams,
+  ]);
   const isCompany = type === "company";
+  if (userId) {
+    redirect(
+      isCompany
+        ? "/onboarding/company"
+        : (localRedirectPath(redirect_url) ?? "/feed"),
+    );
+  }
 
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-5">
