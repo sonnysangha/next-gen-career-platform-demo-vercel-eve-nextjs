@@ -14,3 +14,12 @@ export const AI_FEATURES = {
 export type AiFeature = keyof typeof AI_FEATURES;
 
 export const PRO_PLAN = "pro";
+
+/**
+ * Org-based billing (Clerk Billing for Organizations).
+ * `COMPANY_PRO_PLAN` is the plan slug configured in Clerk Dashboard →
+ * Billing → Plans (for organizations). Free companies can keep up to
+ * `FREE_OPEN_JOB_LIMIT` jobs open at once; Company Pro removes the cap.
+ */
+export const COMPANY_PRO_PLAN = "company_pro";
+export const FREE_OPEN_JOB_LIMIT = 3;

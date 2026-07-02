@@ -1,19 +1,23 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { useAuth } from "@clerk/nextjs";
-import { MessagesSquare, Mail, Send } from "lucide-react";
+import { toast } from "sonner";
+import { MessagesSquare, Mail, Send, Trash2, Copy } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { AiActionButton } from "@/components/ai/ai-action-button";
 import { EmptyState } from "@/components/empty-state";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { AI_FEATURES } from "@/lib/ai-features";
 import { timeAgo } from "@/lib/format";
 
 export default function OutreachPage() {
   const { has } = useAuth();
   const drafts = useQuery(api.drafts.getMyOutreachDrafts, {});
+  const deleteDraft = useMutation(api.drafts.deleteOutreachDraft);
   const outreachLocked = !(has?.({ feature: AI_FEATURES.outreach_writer }) ?? false);
 
   return (
@@ -69,9 +73,34 @@ export default function OutreachPage() {
                 <Badge variant={d.status === "saved" ? "default" : "secondary"}>
                   {d.status}
                 </Badge>
-                <span className="text-xs text-muted-foreground">
-                  {timeAgo(d.createdAt)}
-                </span>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">
+                    {timeAgo(d.createdAt)}
+                  </span>
+                  <ConfirmDialog
+                    title="Delete this draft?"
+                    description="The outreach draft will be permanently removed."
+                    onConfirm={async () => {
+                      try {
+                        await deleteDraft({ draftId: d._id });
+                        toast.success("Draft deleted");
+                      } catch {
+                        toast.error("Could not delete the draft");
+                      }
+                    }}
+                    renderTrigger={(open) => (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={open}
+                        aria-label="Delete draft"
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  />
+                </div>
               </div>
               {d.subject && (
                 <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
@@ -81,11 +110,37 @@ export default function OutreachPage() {
               )}
               <div className="space-y-2 text-sm">
                 <div>
-                  <p className="text-xs text-muted-foreground">Connection message</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">Connection message</p>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label="Copy connection message"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(d.connectionMessage);
+                        toast.success("Copied to clipboard");
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
                   <p className="whitespace-pre-wrap">{d.connectionMessage}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Recruiter DM</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">Recruiter DM</p>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label="Copy recruiter DM"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(d.recruiterDm);
+                        toast.success("Copied to clipboard");
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
                   <p className="whitespace-pre-wrap">{d.recruiterDm}</p>
                 </div>
               </div>

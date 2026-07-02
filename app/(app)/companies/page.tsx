@@ -1,20 +1,50 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
-import { Building2, MapPin, Users } from "lucide-react";
+import { Building2, MapPin, Users, Search, Rocket } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { CompanyLogo } from "@/components/company-logo";
 import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function CompaniesPage() {
-  const companies = useQuery(api.companies.getCompanies, {});
+  const [search, setSearch] = useState("");
+  const companies = useQuery(api.companies.getCompanies, {
+    search: search || undefined,
+  });
+  const myCompany = useQuery(api.companies.getMyCompany, {});
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h1 className="mb-4 text-xl font-semibold">Companies</h1>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Companies</h1>
+        {myCompany === null && (
+          <Button
+            render={<Link href="/onboarding/company" />}
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+          >
+            <Rocket className="h-4 w-4" />
+            Create a company page
+          </Button>
+        )}
+      </div>
+
+      <div className="relative mb-4">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, industry, or location…"
+          className="max-w-sm pl-8"
+        />
+      </div>
 
       {companies === undefined ? (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -23,7 +53,13 @@ export default function CompaniesPage() {
           ))}
         </div>
       ) : companies.length === 0 ? (
-        <EmptyState icon={Building2} title="No companies yet" />
+        <EmptyState
+          icon={Building2}
+          title={search ? "No companies match" : "No companies yet"}
+          description={
+            search ? "Try a different search." : "Be the first to create one."
+          }
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {companies.map((c) => (

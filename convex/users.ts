@@ -67,7 +67,13 @@ export const upsertCurrentUser = mutation({
       } = {};
       if (existing.name !== name) patch.name = name;
       if (existing.email !== email) patch.email = email;
-      if (imageUrl !== undefined && existing.imageUrl !== imageUrl) {
+      // Don't clobber a custom-uploaded avatar (imageStorageId set) with the
+      // Clerk profile picture.
+      if (
+        imageUrl !== undefined &&
+        existing.imageStorageId === undefined &&
+        existing.imageUrl !== imageUrl
+      ) {
         patch.imageUrl = imageUrl;
       }
       if (Object.keys(patch).length > 0) {

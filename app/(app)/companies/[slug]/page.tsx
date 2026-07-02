@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "convex/react";
-import { Building2, MapPin, Users, Briefcase, ExternalLink } from "lucide-react";
+import {
+  Building2,
+  MapPin,
+  Users,
+  Briefcase,
+  ExternalLink,
+  LayoutDashboard,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { CompanyLogo } from "@/components/company-logo";
 import { UserAvatar } from "@/components/user-avatar";
@@ -27,16 +35,42 @@ export default function CompanyPage() {
     return <EmptyState icon={Building2} title="Company not found" />;
   }
 
-  const { company, jobs, recruiters, employees } = data;
+  const { company, jobs, recruiters, employees, canManage } = data;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       {/* Header */}
-      <div className="rounded-xl border bg-card p-5">
-        <div className="flex items-start gap-4">
-          <CompanyLogo name={company.name} src={company.logoUrl} className="h-16 w-16" />
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold">{company.name}</h1>
+      <div className="overflow-hidden rounded-xl border bg-card">
+        <div
+          className="h-28 bg-gradient-to-r from-primary/40 to-primary/10 bg-cover bg-center sm:h-36"
+          style={
+            company.coverImageUrl
+              ? { backgroundImage: `url(${company.coverImageUrl})` }
+              : undefined
+          }
+        />
+        <div className="p-5">
+        <div className="-mt-13 flex items-start gap-4">
+          <CompanyLogo
+            name={company.name}
+            src={company.logoUrl}
+            className="h-16 w-16 border-4 border-card bg-card"
+          />
+          <div className="mt-9 min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h1 className="text-xl font-semibold">{company.name}</h1>
+              {canManage && (
+                <Button
+                  render={<Link href="/company" />}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Manage
+                </Button>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">{company.industry}</p>
             <p className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
@@ -64,6 +98,7 @@ export default function CompanyPage() {
         <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
           {company.about}
         </p>
+        </div>
       </div>
 
       {/* Open roles */}

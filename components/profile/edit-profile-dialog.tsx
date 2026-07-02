@@ -23,6 +23,10 @@ type Profile = {
   headline: string;
   about: string;
   location: string;
+  pronouns?: string;
+  websiteUrl?: string;
+  githubUrl?: string;
+  twitterUrl?: string;
   targetRole?: string;
   openToWork: boolean;
 } | null;
@@ -42,6 +46,10 @@ export function EditProfileDialog({
   const [headline, setHeadline] = useState(profile?.headline ?? "");
   const [about, setAbout] = useState(profile?.about ?? "");
   const [location, setLocation] = useState(profile?.location ?? "");
+  const [pronouns, setPronouns] = useState(profile?.pronouns ?? "");
+  const [website, setWebsite] = useState(profile?.websiteUrl ?? "");
+  const [github, setGithub] = useState(profile?.githubUrl ?? "");
+  const [twitter, setTwitter] = useState(profile?.twitterUrl ?? "");
   const [targetRole, setTargetRole] = useState(profile?.targetRole ?? "");
   const [openToWork, setOpenToWork] = useState(profile?.openToWork ?? false);
   const [saving, setSaving] = useState(false);
@@ -55,7 +63,17 @@ export function EditProfileDialog({
     try {
       await Promise.all([
         updateName({ name: name.trim() }),
-        updateProfile({ headline, about, location, targetRole, openToWork }),
+        updateProfile({
+          headline,
+          about,
+          location,
+          pronouns,
+          websiteUrl: website,
+          githubUrl: github,
+          twitterUrl: twitter,
+          targetRole,
+          openToWork,
+        }),
       ]);
       toast.success("Profile updated");
       setOpen(false);
@@ -110,14 +128,57 @@ export function EditProfileDialog({
                 placeholder="e.g. Next.js AI Engineer"
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. London, UK"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="pronouns">Pronouns</Label>
+                <Input
+                  id="pronouns"
+                  value={pronouns}
+                  onChange={(e) => setPronouns(e.target.value)}
+                  placeholder="e.g. she/her"
+                />
+              </div>
+            </div>
             <div className="space-y-1.5">
-              <Label htmlFor="location">Location</Label>
+              <Label htmlFor="website">Website</Label>
               <Input
-                id="location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. London, UK"
+                id="website"
+                type="url"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://your-site.com"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="github">GitHub</Label>
+                <Input
+                  id="github"
+                  type="url"
+                  value={github}
+                  onChange={(e) => setGithub(e.target.value)}
+                  placeholder="https://github.com/…"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="twitter">X / Twitter</Label>
+                <Input
+                  id="twitter"
+                  type="url"
+                  value={twitter}
+                  onChange={(e) => setTwitter(e.target.value)}
+                  placeholder="https://x.com/…"
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="about">About</Label>
@@ -133,7 +194,7 @@ export function EditProfileDialog({
               <div>
                 <p className="text-sm font-medium">Open to work</p>
                 <p className="text-xs text-muted-foreground">
-                  Show recruiters you're available.
+                  Show recruiters you&apos;re available.
                 </p>
               </div>
               <Switch checked={openToWork} onCheckedChange={setOpenToWork} />

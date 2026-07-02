@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { getUserByIdentity, authorSummaryValidator, postDocValidator } from "./model";
+import {
+  getUserByIdentity,
+  notify,
+  authorSummaryValidator,
+  postDocValidator,
+} from "./model";
 import { Doc, Id } from "./_generated/dataModel";
 import { QueryCtx } from "./_generated/server";
 
@@ -62,32 +67,129 @@ export const getFeed = query({
   },
 });
 
+const kindValidator = v.union(
+  v.literal("update"),
+  v.literal("hiring"),
+  v.literal("hot_take"),
+  v.literal("launch"),
+);
+
 /** Create a post authored by the current user. Defaults kind to "update". */
 export const createPost = mutation({
   args: {
     content: v.string(),
-    kind: v.optional(
-      v.union(
-        v.literal("update"),
-        v.literal("hiring"),
-        v.literal("hot_take"),
-        v.literal("launch"),
-      ),
-    ),
-    imageUrl: v.optional(v.string()),
+    kind: v.optional(kindValidator),
+    // Image uploaded via files.generateUploadUrl; resolved to a URL here.
+    imageStorageId: v.optional(v.id("_storage")),
   },
   returns: v.id("posts"),
   handler: async (ctx, args) => {
     const me = await getUserByIdentity(ctx);
     if (me === null) throw new Error("Not authenticated");
+    let imageUrl: string | undefined;
+    if (args.imageStorageId !== undefined) {
+      const url = await ctx.storage.getUrl(args.imageStorageId);
+      if (url === null) throw new Error("Uploaded image not found");
+      imageUrl = url;
+    }
     return await ctx.db.insert("posts", {
       authorId: me._id,
       content: args.content,
-      imageUrl: args.imageUrl,
+      imageUrl,
+      imageStorageId: args.imageStorageId,
       kind: args.kind ?? "update",
       likeCount: 0,
       commentCount: 0,
     });
+  },
+});
+
+/** Edit the caller's own post (content/kind; optionally replace the image). */
+export const updatePost = mutation({
+  args: {
+    postId: v.id("posts"),
+    content: v.string(),
+    kind: v.optional(kindValidator),
+    // undefined == keep current image; null == remove; storageId == replace
+    imageStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const me = await getUserByIdentity(ctx);
+    if (me === null) throw new Error("Not authenticated");
+    const post = await ctx.db.get(args.postId);
+    if (post === null || post.authorId !== me._id) {
+      throw new Error("Not authorized to edit this post");
+    }
+    const content = args.content.trim();
+    if (content.length === 0) throw new Error("Post can't be empty");
+
+    const patch: Partial<Doc<"posts">> = {
+      content,
+      editedAt: Date.now(),
+      ...(args.kind !== undefined ? { kind: args.kind } : {}),
+    };
+
+    if (args.imageStorageId !== undefined) {
+      // Replace or remove: delete the old uploaded file either way.
+      if (post.imageStorageId !== undefined) {
+        try {
+          await ctx.storage.delete(post.imageStorageId);
+        } catch {
+          // already gone
+        }
+      }
+      if (args.imageStorageId === null) {
+        patch.imageUrl = undefined;
+        patch.imageStorageId = undefined;
+      } else {
+        const url = await ctx.storage.getUrl(args.imageStorageId);
+        if (url === null) throw new Error("Uploaded image not found");
+        patch.imageUrl = url;
+        patch.imageStorageId = args.imageStorageId;
+      }
+    }
+
+    await ctx.db.patch(post._id, patch);
+    return null;
+  },
+});
+
+/** Delete the caller's own post, its comments, likes, and uploaded image. */
+export const deletePost = mutation({
+  args: { postId: v.id("posts") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const me = await getUserByIdentity(ctx);
+    if (me === null) throw new Error("Not authenticated");
+    const post = await ctx.db.get(args.postId);
+    if (post === null || post.authorId !== me._id) {
+      throw new Error("Not authorized to delete this post");
+    }
+
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_post", (q) => q.eq("postId", post._id))
+      .collect();
+    for (const c of comments) await ctx.db.delete(c._id);
+
+    // likes has no by_post-only index; by_post_and_user is prefixed by postId.
+    const likes = await ctx.db
+      .query("likes")
+      .withIndex("by_post_and_user", (q) => q.eq("postId", post._id))
+      .collect();
+    for (const l of likes) await ctx.db.delete(l._id);
+
+    if (post.imageStorageId !== undefined) {
+      try {
+        await ctx.storage.delete(post.imageStorageId);
+      } catch {
+        // already gone
+      }
+    }
+
+    await ctx.db.delete(post._id);
+    return null;
   },
 });
 
@@ -122,6 +224,13 @@ export const toggleLike = mutation({
 
     await ctx.db.insert("likes", { postId: args.postId, userId: me._id });
     await ctx.db.patch(args.postId, { likeCount: post.likeCount + 1 });
+    await notify(ctx, {
+      userId: post.authorId,
+      actorId: me._id,
+      type: "like",
+      message: `${me.name} liked your post`,
+      postId: post._id,
+    });
     return { liked: true };
   },
 });
@@ -143,7 +252,42 @@ export const addComment = mutation({
       content: args.content,
     });
     await ctx.db.patch(args.postId, { commentCount: post.commentCount + 1 });
+    await notify(ctx, {
+      userId: post.authorId,
+      actorId: me._id,
+      type: "comment",
+      message: `${me.name} commented on your post`,
+      postId: post._id,
+    });
     return commentId;
+  },
+});
+
+/**
+ * Delete a comment. Allowed for the comment's author or the post's author
+ * (moderating your own post). Keeps commentCount in sync.
+ */
+export const deleteComment = mutation({
+  args: { commentId: v.id("comments") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const me = await getUserByIdentity(ctx);
+    if (me === null) throw new Error("Not authenticated");
+    const comment = await ctx.db.get(args.commentId);
+    if (comment === null) throw new Error("Comment not found");
+    const post = await ctx.db.get(comment.postId);
+    const isMine = comment.authorId === me._id;
+    const isMyPost = post !== null && post.authorId === me._id;
+    if (!isMine && !isMyPost) {
+      throw new Error("Not authorized to delete this comment");
+    }
+    await ctx.db.delete(comment._id);
+    if (post !== null) {
+      await ctx.db.patch(post._id, {
+        commentCount: Math.max(0, post.commentCount - 1),
+      });
+    }
+    return null;
   },
 });
 
@@ -151,6 +295,7 @@ const commentItemValidator = v.object({
   _id: v.id("comments"),
   _creationTime: v.number(),
   postId: v.id("posts"),
+  authorId: v.id("users"),
   content: v.string(),
   author: v.union(authorSummaryValidator, v.null()),
 });
@@ -170,6 +315,7 @@ export const getComments = query({
         _id: c._id,
         _creationTime: c._creationTime,
         postId: c.postId,
+        authorId: c.authorId,
         content: c.content,
         author: await authorSummary(ctx, c.authorId),
       }))

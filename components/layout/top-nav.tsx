@@ -11,9 +11,13 @@ import {
   MessagesSquare,
   Sparkles,
   Search,
+  LayoutDashboard,
 } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
+import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Logo } from "@/components/logo";
+import { NotificationsBell } from "@/components/layout/notifications-bell";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -29,11 +33,19 @@ export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const myCompany = useQuery(api.companies.getMyCompany, {});
 
   function isActive(href: string, exact?: boolean) {
     if (exact) return pathname === href;
     return pathname === href || pathname.startsWith(href + "/");
   }
+
+  const navItems = myCompany
+    ? [
+        ...NAV_ITEMS,
+        { href: "/company", label: "Dashboard", icon: LayoutDashboard },
+      ]
+    : NAV_ITEMS;
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -57,7 +69,7 @@ export function TopNav() {
         </form>
 
         <nav className="ml-auto flex items-center gap-0.5 sm:gap-1">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = isActive(item.href, item.exact);
             const Icon = item.icon;
             return (
@@ -76,6 +88,26 @@ export function TopNav() {
               </Link>
             );
           })}
+
+          <NotificationsBell />
+
+          {/* Org switcher: create/switch orgs, invite teammates. Only shown
+              for company accounts so job seekers keep a clean nav. */}
+          {myCompany?.orgId && (
+            <div className="hidden sm:block">
+              <OrganizationSwitcher
+                hidePersonal
+                afterCreateOrganizationUrl="/onboarding/company"
+                afterSelectOrganizationUrl="/company"
+                appearance={{
+                  elements: {
+                    organizationSwitcherTrigger: "h-9 px-2",
+                  },
+                }}
+              />
+            </div>
+          )}
+
           <div className="ml-1 sm:ml-2">
             <UserButton
               appearance={{ elements: { avatarBox: "h-8 w-8" } }}

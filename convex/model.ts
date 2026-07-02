@@ -49,6 +49,183 @@ export async function getProfileForUser(
     .unique();
 }
 
+// ── Company / Clerk-Organization authorization ───────────────────────
+
+/**
+ * The Clerk organization id ("org_…") active on the caller's session, or null.
+ * Comes from the `org_id` claim on the Convex JWT template (or the `o.id`
+ * claim Clerk emits by default on session tokens with an active org).
+ */
+export async function getActiveOrgId(
+  ctx: QueryCtx | MutationCtx,
+): Promise<string | null> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity === null) return null;
+  const claims = identity as Record<string, unknown>;
+  if (typeof claims.org_id === "string" && claims.org_id.length > 0) {
+    return claims.org_id;
+  }
+  const o = claims.o;
+  if (o !== null && typeof o === "object" && "id" in o) {
+    const id = (o as { id: unknown }).id;
+    if (typeof id === "string" && id.length > 0) return id;
+  }
+  return null;
+}
+
+/**
+ * Org-based billing. Keep in sync with lib/ai-features.ts
+ * (COMPANY_PRO_PLAN / FREE_OPEN_JOB_LIMIT) — convex/ can't import from lib/.
+ */
+export const COMPANY_PRO_PLAN = "company_pro";
+export const FREE_OPEN_JOB_LIMIT = 3;
+
+/**
+ * Does the caller's active organization have the Company Pro plan?
+ * Reads the billing plan claims Clerk can put on the Convex JWT:
+ * - `pla` (Clerk session claim format, e.g. "u:free_user o:company_pro")
+ * - `org_plan` (explicit custom claim on the JWT template)
+ * Absent claims mean "not pro" — the free-tier limits apply.
+ */
+export async function orgHasCompanyPro(
+  ctx: QueryCtx | MutationCtx,
+): Promise<boolean> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity === null) return false;
+  const claims = identity as Record<string, unknown>;
+  if (
+    typeof claims.pla === "string" &&
+    claims.pla.split(/\s+/).includes(`o:${COMPANY_PRO_PLAN}`)
+  ) {
+    return true;
+  }
+  if (
+    typeof claims.org_plan === "string" &&
+    claims.org_plan === COMPANY_PRO_PLAN
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Is the current caller an admin of this company (org member or owner)? */
+export async function isCompanyAdmin(
+  ctx: QueryCtx | MutationCtx,
+  company: Doc<"companies">,
+  me: Doc<"users"> | null,
+): Promise<boolean> {
+  if (me !== null && company.ownerId === me._id) return true;
+  if (company.orgId !== undefined) {
+    const orgId = await getActiveOrgId(ctx);
+    if (orgId !== null && orgId === company.orgId) return true;
+  }
+  return false;
+}
+
+/**
+ * Load a company and assert the caller may administer it. Returns
+ * { company, me } or throws.
+ */
+export async function assertCompanyAdmin(
+  ctx: QueryCtx | MutationCtx,
+  companyId: Id<"companies">,
+): Promise<{ company: Doc<"companies">; me: Doc<"users"> }> {
+  const me = await getUserByIdentity(ctx);
+  if (me === null) throw new Error("Not authenticated");
+  const company = await ctx.db.get(companyId);
+  if (company === null) throw new Error("Company not found");
+  if (!(await isCompanyAdmin(ctx, company, me))) {
+    throw new Error("Not authorized to manage this company");
+  }
+  return { company, me };
+}
+
+/**
+ * The company the caller administers: the one owned by them, or the one
+ * linked to their active Clerk organization. Null when neither exists.
+ */
+export async function getMyCompanyDoc(
+  ctx: QueryCtx | MutationCtx,
+): Promise<Doc<"companies"> | null> {
+  const me = await getUserByIdentity(ctx);
+  const orgId = await getActiveOrgId(ctx);
+  if (orgId !== null) {
+    const byOrg = await ctx.db
+      .query("companies")
+      .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
+      .unique();
+    if (byOrg !== null) return byOrg;
+  }
+  if (me !== null) {
+    const byOwner = await ctx.db
+      .query("companies")
+      .withIndex("by_ownerId", (q) => q.eq("ownerId", me._id))
+      .first();
+    if (byOwner !== null) return byOwner;
+  }
+  return null;
+}
+
+// ── Notifications ────────────────────────────────────────────────────
+
+/**
+ * Insert a notification, skipping self-notifications (actor == recipient).
+ */
+export async function notify(
+  ctx: MutationCtx,
+  args: {
+    userId: Id<"users">;
+    actorId?: Id<"users">;
+    type: Doc<"notifications">["type"];
+    message: string;
+    postId?: Id<"posts">;
+    jobId?: Id<"jobs">;
+    applicationId?: Id<"applications">;
+  },
+): Promise<void> {
+  if (args.actorId !== undefined && args.actorId === args.userId) return;
+  await ctx.db.insert("notifications", {
+    userId: args.userId,
+    actorId: args.actorId,
+    type: args.type,
+    message: args.message,
+    postId: args.postId,
+    jobId: args.jobId,
+    applicationId: args.applicationId,
+    read: false,
+    createdAt: Date.now(),
+  });
+}
+
+/** Build a stable, url-safe slug from a company name. */
+export function baseSlugFrom(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return slug.length > 0 ? slug : "company";
+}
+
+/** Ensure a company slug is unique by appending -2, -3, ... as needed. */
+export async function uniqueCompanySlug(
+  ctx: QueryCtx | MutationCtx,
+  base: string,
+): Promise<string> {
+  let candidate = base;
+  let n = 1;
+  while (true) {
+    const existing = await ctx.db
+      .query("companies")
+      .withIndex("by_slug", (q) => q.eq("slug", candidate))
+      .unique();
+    if (existing === null) return candidate;
+    n += 1;
+    candidate = `${base}-${n}`;
+  }
+}
+
 /**
  * Build a stable, url-safe base slug from an email/name. Callers still need to
  * de-duplicate against existing usernames.
@@ -103,6 +280,7 @@ export const userDocValidator = v.object({
   name: v.string(),
   email: v.string(),
   imageUrl: v.optional(v.string()),
+  imageStorageId: v.optional(v.id("_storage")),
   username: v.string(),
   createdAt: v.number(),
 });
@@ -115,11 +293,29 @@ export const profileDocValidator = v.object({
   headline: v.string(),
   about: v.string(),
   location: v.string(),
+  pronouns: v.optional(v.string()),
+  websiteUrl: v.optional(v.string()),
+  githubUrl: v.optional(v.string()),
+  twitterUrl: v.optional(v.string()),
   targetRole: v.optional(v.string()),
   openToWork: v.boolean(),
   coverImageUrl: v.optional(v.string()),
+  coverImageStorageId: v.optional(v.id("_storage")),
   embedding: v.optional(v.array(v.float64())),
   embeddingText: v.optional(v.string()),
+});
+
+/** Full education document validator. */
+export const educationDocValidator = v.object({
+  _id: v.id("education"),
+  _creationTime: v.number(),
+  userId: v.id("users"),
+  school: v.string(),
+  degree: v.string(),
+  field: v.string(),
+  startYear: v.string(),
+  endYear: v.optional(v.string()),
+  description: v.optional(v.string()),
 });
 
 /** Full experiences document validator. */
@@ -152,11 +348,61 @@ export const companyDocValidator = v.object({
   name: v.string(),
   slug: v.string(),
   logoUrl: v.optional(v.string()),
+  logoStorageId: v.optional(v.id("_storage")),
+  coverImageUrl: v.optional(v.string()),
+  coverImageStorageId: v.optional(v.id("_storage")),
   industry: v.string(),
   size: v.string(),
   location: v.string(),
   about: v.string(),
   websiteUrl: v.optional(v.string()),
+  orgId: v.optional(v.string()),
+  ownerId: v.optional(v.id("users")),
+});
+
+/** Application status validator (shared by applications.ts + UI payloads). */
+export const applicationStatusValidator = v.union(
+  v.literal("submitted"),
+  v.literal("reviewed"),
+  v.literal("interviewing"),
+  v.literal("offer"),
+  v.literal("rejected"),
+  v.literal("withdrawn"),
+);
+
+/** Full applications document validator. */
+export const applicationDocValidator = v.object({
+  _id: v.id("applications"),
+  _creationTime: v.number(),
+  jobId: v.id("jobs"),
+  userId: v.id("users"),
+  companyId: v.id("companies"),
+  coverNote: v.optional(v.string()),
+  status: applicationStatusValidator,
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+
+/** Full notifications document validator. */
+export const notificationDocValidator = v.object({
+  _id: v.id("notifications"),
+  _creationTime: v.number(),
+  userId: v.id("users"),
+  actorId: v.optional(v.id("users")),
+  type: v.union(
+    v.literal("like"),
+    v.literal("comment"),
+    v.literal("follow"),
+    v.literal("endorsement"),
+    v.literal("application"),
+    v.literal("application_status"),
+  ),
+  message: v.string(),
+  postId: v.optional(v.id("posts")),
+  jobId: v.optional(v.id("jobs")),
+  applicationId: v.optional(v.id("applications")),
+  read: v.boolean(),
+  createdAt: v.number(),
 });
 
 /** Full jobs document validator. */
@@ -166,6 +412,8 @@ export const jobDocValidator = v.object({
   title: v.string(),
   companyId: v.id("companies"),
   recruiterId: v.optional(v.id("recruiters")),
+  createdBy: v.optional(v.id("users")),
+  status: v.optional(v.union(v.literal("open"), v.literal("closed"))),
   salaryMin: v.number(),
   salaryMax: v.number(),
   currency: v.string(),
@@ -208,6 +456,8 @@ export const postDocValidator = v.object({
   authorId: v.id("users"),
   content: v.string(),
   imageUrl: v.optional(v.string()),
+  imageStorageId: v.optional(v.id("_storage")),
+  editedAt: v.optional(v.number()),
   kind: v.union(
     v.literal("update"),
     v.literal("hiring"),

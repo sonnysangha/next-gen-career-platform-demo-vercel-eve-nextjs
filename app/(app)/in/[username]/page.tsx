@@ -12,6 +12,13 @@ import {
   Wand2,
   Check,
   UserRound,
+  UserPlus,
+  UserMinus,
+  Globe,
+  Code2,
+  AtSign,
+  ThumbsUp,
+  Newspaper,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -20,12 +27,15 @@ import { EmptyState } from "@/components/empty-state";
 import { AiActionButton } from "@/components/ai/ai-action-button";
 import { EditProfileDialog } from "@/components/profile/edit-profile-dialog";
 import { ExperienceDialog } from "@/components/profile/experience-dialog";
+import { EducationDialog } from "@/components/profile/education-dialog";
 import { SkillsEditor } from "@/components/profile/skills-editor";
+import { ImagePickerButton } from "@/components/image-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AI_FEATURES } from "@/lib/ai-features";
 import { timeAgo } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 function Card({
   title,
@@ -58,8 +68,17 @@ export default function ProfilePage() {
   const data = useQuery(api.profiles.getProfileByUsername, { username });
   const me = useQuery(api.users.getCurrentUser);
   const drafts = useQuery(api.drafts.getMyProfileDrafts, {});
+  const followStats = useQuery(
+    api.network.getFollowStats,
+    data ? { userId: data.user._id } : "skip",
+  );
   const applyDraft = useMutation(api.profiles.applyProfileDraft);
+  const deleteProfileDraft = useMutation(api.drafts.deleteProfileDraft);
   const becomeAlex = useMutation(api.demo.becomeAlex);
+  const toggleFollow = useMutation(api.network.toggleFollow);
+  const toggleEndorsement = useMutation(api.profiles.toggleEndorsement);
+  const setAvatar = useMutation(api.files.setMyAvatar);
+  const setCover = useMutation(api.files.setMyProfileCover);
 
   const optimizerLocked = !(has?.({ feature: AI_FEATURES.profile_optimizer }) ?? false);
 
@@ -76,46 +95,145 @@ export default function ProfilePage() {
     );
   }
 
-  const { user, profile, experiences, skills, recentPosts } = data;
+  const { user, profile, experiences, education, skills, recentPosts } = data;
   const isOwn = me?.user._id === user._id;
+  const signedIn = me !== undefined && me !== null;
   const savedDrafts = (drafts ?? []).filter((d) => d.status === "saved");
+
+  const socialLinks = [
+    profile?.websiteUrl
+      ? { href: profile.websiteUrl, icon: Globe, label: "Website" }
+      : null,
+    profile?.githubUrl
+      ? { href: profile.githubUrl, icon: Code2, label: "GitHub" }
+      : null,
+    profile?.twitterUrl
+      ? { href: profile.twitterUrl, icon: AtSign, label: "X" }
+      : null,
+  ].filter(Boolean) as { href: string; icon: typeof Globe; label: string }[];
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       {/* Header */}
       <div className="overflow-hidden rounded-xl border bg-card">
         <div
-          className="h-28 bg-gradient-to-r from-primary/40 to-primary/10"
+          className="relative h-32 bg-gradient-to-r from-primary/40 to-primary/10 bg-cover bg-center sm:h-40"
           style={
             profile?.coverImageUrl
-              ? { backgroundImage: `url(${profile.coverImageUrl})`, backgroundSize: "cover" }
+              ? { backgroundImage: `url(${profile.coverImageUrl})` }
               : undefined
           }
-        />
+        >
+          {isOwn && (
+            <div className="absolute bottom-2 right-2">
+              <ImagePickerButton
+                label={profile?.coverImageUrl ? "Change cover" : "Add cover"}
+                hasImage={!!profile?.coverImageUrl}
+                onUploaded={async (storageId) => {
+                  await setCover({ storageId });
+                  toast.success("Cover updated");
+                }}
+                onClear={async () => {
+                  await setCover({ storageId: undefined });
+                  toast.success("Cover removed");
+                }}
+                variant="secondary"
+                size="xs"
+              />
+            </div>
+          )}
+        </div>
         <div className="px-5 pb-5">
           <div className="-mt-10 flex items-end justify-between">
-            <UserAvatar
-              name={user.name}
-              src={user.imageUrl}
-              className="h-20 w-20 border-4 border-card"
-            />
-            {isOwn && <EditProfileDialog user={user} profile={profile} />}
+            <div className="flex items-end gap-2">
+              <UserAvatar
+                name={user.name}
+                src={user.imageUrl}
+                className="h-20 w-20 border-4 border-card"
+              />
+              {isOwn && (
+                <ImagePickerButton
+                  label="Photo"
+                  hasImage={!!user.imageStorageId}
+                  onUploaded={async (storageId) => {
+                    await setAvatar({ storageId });
+                    toast.success("Profile photo updated");
+                  }}
+                  onClear={async () => {
+                    await setAvatar({ storageId: undefined });
+                    toast.success("Custom photo removed");
+                  }}
+                  size="xs"
+                />
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {isOwn ? (
+                <EditProfileDialog user={user} profile={profile} />
+              ) : (
+                signedIn && (
+                  <Button
+                    size="sm"
+                    variant={followStats?.followedByMe ? "outline" : "default"}
+                    className="gap-1.5"
+                    onClick={async () => {
+                      try {
+                        const { following } = await toggleFollow({
+                          userId: user._id,
+                        });
+                        toast.success(
+                          following
+                            ? `Following ${user.name}`
+                            : `Unfollowed ${user.name}`,
+                        );
+                      } catch {
+                        toast.error("Could not update follow");
+                      }
+                    }}
+                  >
+                    {followStats?.followedByMe ? (
+                      <UserMinus className="h-4 w-4" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    {followStats?.followedByMe ? "Following" : "Follow"}
+                  </Button>
+                )
+              )}
+            </div>
           </div>
           <div className="mt-3">
             <h1 className="flex items-center gap-1.5 text-xl font-semibold">
               {user.name}
+              {profile?.pronouns && (
+                <span className="text-sm font-normal text-muted-foreground">
+                  ({profile.pronouns})
+                </span>
+              )}
               {profile?.openToWork && (
                 <BadgeCheck className="h-5 w-5 text-primary" />
               )}
             </h1>
             <p className="text-muted-foreground">
-              {profile?.headline ?? "No headline yet"}
+              {profile?.headline || "No headline yet"}
             </p>
-            <p className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
+            <p className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               {profile?.location && (
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5" />
                   {profile.location}
+                </span>
+              )}
+              {followStats && (
+                <span>
+                  <span className="font-medium text-foreground">
+                    {followStats.followers}
+                  </span>{" "}
+                  followers ·{" "}
+                  <span className="font-medium text-foreground">
+                    {followStats.following}
+                  </span>{" "}
+                  following
                 </span>
               )}
               {profile?.openToWork && (
@@ -124,6 +242,22 @@ export default function ProfilePage() {
                 </Badge>
               )}
             </p>
+            {socialLinks.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {socialLinks.map(({ href, icon: Icon, label }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -170,17 +304,32 @@ export default function ProfilePage() {
                 <p className="font-medium">{d.headline}</p>
                 <p className="mt-2 text-xs text-muted-foreground">Suggested about</p>
                 <p className="text-sm">{d.about}</p>
-                <Button
-                  size="sm"
-                  className="mt-3 gap-1.5"
-                  onClick={async () => {
-                    await applyDraft({ draftId: d._id as Id<"profileDrafts"> });
-                    toast.success("Applied to your live profile");
-                  }}
-                >
-                  <Check className="h-4 w-4" />
-                  Apply to profile
-                </Button>
+                <div className="mt-3 flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={async () => {
+                      await applyDraft({ draftId: d._id as Id<"profileDrafts"> });
+                      toast.success("Applied to your live profile");
+                    }}
+                  >
+                    <Check className="h-4 w-4" />
+                    Apply to profile
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={async () => {
+                      await deleteProfileDraft({
+                        draftId: d._id as Id<"profileDrafts">,
+                      });
+                      toast.success("Draft deleted");
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -214,6 +363,7 @@ export default function ProfilePage() {
                   <p className="text-sm text-muted-foreground">{exp.company}</p>
                   <p className="text-xs text-muted-foreground">
                     {exp.startDate} – {exp.endDate ?? "Present"}
+                    {exp.location ? ` · ${exp.location}` : ""}
                   </p>
                   {exp.description && (
                     <p className="mt-1 text-sm">{exp.description}</p>
@@ -226,8 +376,42 @@ export default function ProfilePage() {
         )}
       </Card>
 
+      {/* Education */}
+      <Card
+        title="Education"
+        icon={GraduationCap}
+        action={isOwn ? <EducationDialog /> : undefined}
+      >
+        {education.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No education listed.</p>
+        ) : (
+          <div className="space-y-4">
+            {education.map((edu) => (
+              <div key={edu._id} className="flex gap-3">
+                <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted">
+                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{edu.school}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {[edu.degree, edu.field].filter(Boolean).join(", ")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {edu.startYear} – {edu.endYear ?? "Present"}
+                  </p>
+                  {edu.description && (
+                    <p className="mt-1 text-sm">{edu.description}</p>
+                  )}
+                </div>
+                {isOwn && <EducationDialog education={edu} />}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {/* Skills */}
-      <Card title="Skills" icon={GraduationCap}>
+      <Card title="Skills" icon={ThumbsUp}>
         {isOwn ? (
           <SkillsEditor skills={skills} />
         ) : skills.length === 0 ? (
@@ -235,16 +419,53 @@ export default function ProfilePage() {
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {skills.map((s) => (
-              <Badge key={s._id} variant="secondary" className="font-normal">
+              <button
+                key={s._id}
+                type="button"
+                disabled={!signedIn}
+                onClick={async () => {
+                  try {
+                    const { endorsed } = await toggleEndorsement({
+                      skillId: s._id,
+                    });
+                    toast.success(
+                      endorsed
+                        ? `Endorsed ${s.name}`
+                        : `Endorsement removed`,
+                    );
+                  } catch {
+                    toast.error("Could not endorse");
+                  }
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  s.endorsedByMe
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "bg-secondary text-secondary-foreground hover:border-primary/40",
+                  signedIn && "cursor-pointer",
+                )}
+                title={signedIn ? "Endorse this skill" : undefined}
+              >
                 {s.name}
-              </Badge>
+                <span
+                  className={cn(
+                    "flex items-center gap-0.5",
+                    s.endorsedByMe ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  <ThumbsUp
+                    className={cn("h-3 w-3", s.endorsedByMe && "fill-current")}
+                  />
+                  {s.endorsements}
+                </span>
+              </button>
             ))}
           </div>
         )}
       </Card>
 
       {/* Activity */}
-      <Card title="Activity" icon={Briefcase}>
+      <Card title="Activity" icon={Newspaper}>
         {recentPosts.length === 0 ? (
           <p className="text-sm text-muted-foreground">No recent posts.</p>
         ) : (
@@ -252,6 +473,15 @@ export default function ProfilePage() {
             {recentPosts.map((p) => (
               <div key={p._id} className="rounded-lg border p-3 text-sm">
                 <p className="whitespace-pre-wrap">{p.content}</p>
+                {p.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.imageUrl}
+                    alt=""
+                    loading="lazy"
+                    className="mt-2 max-h-64 w-full rounded-md border object-cover"
+                  />
+                )}
                 <p className="mt-1 text-xs text-muted-foreground">
                   {timeAgo(p._creationTime)} · {p.likeCount} likes
                 </p>

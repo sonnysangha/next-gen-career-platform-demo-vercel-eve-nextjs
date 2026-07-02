@@ -199,7 +199,9 @@ export const getAllJobsForMatching = query({
   handler: async (ctx, args) => {
     assertEveSecret(args.secret);
 
-    const jobs = await ctx.db.query("jobs").order("desc").collect();
+    const allJobs = await ctx.db.query("jobs").order("desc").collect();
+    // Never recommend closed roles.
+    const jobs = allJobs.filter((j) => j.status !== "closed");
     return await Promise.all(
       jobs.map(async (job) => {
         const company = await ctx.db.get(job.companyId);

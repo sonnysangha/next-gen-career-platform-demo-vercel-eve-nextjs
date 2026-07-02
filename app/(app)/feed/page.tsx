@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import {
   Sparkles,
   Briefcase,
   Newspaper,
   MapPin,
   ArrowRight,
+  UserPlus,
 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { UserAvatar } from "@/components/user-avatar";
 import { PostComposer } from "@/components/feed/post-composer";
@@ -22,6 +24,8 @@ export default function FeedPage() {
   const me = useQuery(api.users.getCurrentUser);
   const feed = useQuery(api.feed.getFeed, { limit: 30 });
   const jobs = useQuery(api.jobs.getJobs, {});
+  const people = useQuery(api.network.getSuggestedPeople, { limit: 4 });
+  const toggleFollow = useMutation(api.network.toggleFollow);
 
   const suggestedJobs = jobs?.slice(0, 3) ?? [];
 
@@ -98,15 +102,61 @@ export default function FeedPage() {
         ) : (
           <div className="space-y-4">
             {feed.map((post) => (
-              <PostCard key={post._id} post={post} />
+              <PostCard
+                key={post._id}
+                post={post}
+                currentUserId={me?.user._id ?? null}
+              />
             ))}
           </div>
         )}
       </div>
 
-      {/* Right: suggested jobs */}
+      {/* Right: people + suggested jobs */}
       <aside className="hidden lg:block">
-        <div className="sticky top-[4.5rem] space-y-3 rounded-xl border bg-card p-4">
+        <div className="sticky top-[4.5rem] space-y-4">
+        {people !== undefined && people.length > 0 && (
+          <div className="space-y-3 rounded-xl border bg-card p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">People to follow</p>
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
+            </div>
+            {people.map((p) => (
+              <div key={p._id} className="flex items-center gap-2.5">
+                <Link href={`/in/${p.username}`}>
+                  <UserAvatar name={p.name} src={p.imageUrl} className="h-9 w-9" />
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/in/${p.username}`}
+                    className="block truncate text-sm font-medium hover:underline"
+                  >
+                    {p.name}
+                  </Link>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {p.headline ?? ""}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={async () => {
+                    try {
+                      await toggleFollow({ userId: p._id });
+                      toast.success(`Following ${p.name}`);
+                    } catch {
+                      toast.error("Could not follow");
+                    }
+                  }}
+                >
+                  Follow
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="space-y-3 rounded-xl border bg-card p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium">Suggested jobs</p>
             <Briefcase className="h-4 w-4 text-muted-foreground" />
@@ -144,6 +194,7 @@ export default function FeedPage() {
           >
             See all jobs
           </Button>
+        </div>
         </div>
       </aside>
     </div>

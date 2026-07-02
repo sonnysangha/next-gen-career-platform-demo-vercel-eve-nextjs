@@ -5,11 +5,43 @@ import { QueryCtx } from "./_generated/server";
 import {
   getUserByIdentity,
   getProfileForUser,
+  assertCompanyAdmin,
+  orgHasCompanyPro,
+  FREE_OPEN_JOB_LIMIT,
   jobDocValidator,
   companyDocValidator,
   recruiterDocValidator,
 } from "./model";
 import { cosineSimilarity } from "./embeddings";
+import type { MutationCtx } from "./_generated/server";
+
+/** Jobs with no status are legacy/seeded rows and count as open. */
+const jobIsOpen = (j: Doc<"jobs">) => j.status !== "closed";
+
+/**
+ * Org billing: free companies keep at most FREE_OPEN_JOB_LIMIT jobs open;
+ * Company Pro (checked via the JWT billing claims) removes the cap.
+ * `excludeJobId` ignores the job being transitioned (reopen case).
+ */
+async function assertOpenJobSlot(
+  ctx: MutationCtx,
+  companyId: Id<"companies">,
+  excludeJobId?: Id<"jobs">,
+): Promise<void> {
+  if (await orgHasCompanyPro(ctx)) return;
+  const jobs = await ctx.db
+    .query("jobs")
+    .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+    .collect();
+  const openCount = jobs.filter(
+    (j) => jobIsOpen(j) && j._id !== excludeJobId,
+  ).length;
+  if (openCount >= FREE_OPEN_JOB_LIMIT) {
+    throw new Error(
+      `Free companies can have up to ${FREE_OPEN_JOB_LIMIT} open jobs. Upgrade to Company Pro for unlimited job posts.`,
+    );
+  }
+}
 
 const seniorityValidator = v.union(
   v.literal("intern"),
@@ -29,6 +61,7 @@ const jobWithCompanyValidator = v.object({
   ...jobDocValidator.fields,
   company: v.union(companyDocValidator, v.null()),
   savedByMe: v.boolean(),
+  appliedByMe: v.boolean(),
   matchScore: v.union(v.number(), v.null()),
 });
 
@@ -59,6 +92,22 @@ async function isSavedByMe(
     )
     .unique();
   return saved !== null;
+}
+
+/** Does the current user have a live (non-withdrawn) application here? */
+async function isAppliedByMe(
+  ctx: QueryCtx,
+  meId: Id<"users"> | null,
+  jobId: Id<"jobs">,
+): Promise<boolean> {
+  if (meId === null) return false;
+  const app = await ctx.db
+    .query("applications")
+    .withIndex("by_user_and_job", (q) =>
+      q.eq("userId", meId).eq("jobId", jobId),
+    )
+    .unique();
+  return app !== null && app.status !== "withdrawn";
 }
 
 /**
@@ -100,6 +149,9 @@ export const getJobs = query({
       jobs = await ctx.db.query("jobs").order("desc").collect();
     }
 
+    // Closed jobs never show in search.
+    jobs = jobs.filter(jobIsOpen);
+
     // Enrich with company (needed both for output and for text search).
     const enriched = await Promise.all(
       jobs.map(async (job) => {
@@ -137,6 +189,7 @@ export const getJobs = query({
           ...jobRest,
           company,
           savedByMe: await isSavedByMe(ctx, me?._id ?? null, job._id),
+          appliedByMe: await isAppliedByMe(ctx, me?._id ?? null, job._id),
           matchScore: computeMatchScore(myEmbedding, job.embedding),
         };
       }),
@@ -166,6 +219,7 @@ export const getJobById = query({
       company: v.union(companyDocValidator, v.null()),
       recruiter: v.union(recruiterDocValidator, v.null()),
       savedByMe: v.boolean(),
+      appliedByMe: v.boolean(),
       matchScore: v.union(v.number(), v.null()),
     }),
     v.null(),
@@ -192,6 +246,7 @@ export const getJobById = query({
       company,
       recruiter,
       savedByMe: await isSavedByMe(ctx, me?._id ?? null, job._id),
+      appliedByMe: await isAppliedByMe(ctx, me?._id ?? null, job._id),
       matchScore: computeMatchScore(myEmbedding, job.embedding),
     };
   },
@@ -308,5 +363,160 @@ export const getRecruitersForJob = query({
     for (const r of atCompany) byId.set(r._id, r);
 
     return Array.from(byId.values());
+  },
+});
+
+// ── Company-side job management (Clerk-org / owner gated) ────────────
+
+const jobEditableFields = {
+  title: v.string(),
+  salaryMin: v.number(),
+  salaryMax: v.number(),
+  currency: v.string(),
+  skillsRequired: v.array(v.string()),
+  seniority: seniorityValidator,
+  workMode: workModeValidator,
+  location: v.string(),
+  description: v.string(),
+};
+
+/**
+ * All jobs for a company the caller administers (open AND closed), each with
+ * a live applicant count. Powers the company dashboard.
+ */
+export const getCompanyJobs = query({
+  args: { companyId: v.id("companies") },
+  returns: v.array(
+    v.object({
+      ...jobDocValidator.fields,
+      applicantCount: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await assertCompanyAdmin(ctx, args.companyId);
+    const jobs = await ctx.db
+      .query("jobs")
+      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .collect();
+    jobs.sort((a, b) => b.postedAt - a.postedAt);
+    return await Promise.all(
+      jobs.map(async (job) => {
+        const applications = await ctx.db
+          .query("applications")
+          .withIndex("by_job", (q) => q.eq("jobId", job._id))
+          .collect();
+        const { embedding: _e, ...jobRest } = job;
+        return {
+          ...jobRest,
+          applicantCount: applications.filter((a) => a.status !== "withdrawn")
+            .length,
+        };
+      }),
+    );
+  },
+});
+
+/** Post a job for a company the caller administers. */
+export const createJob = mutation({
+  args: { companyId: v.id("companies"), ...jobEditableFields },
+  returns: v.id("jobs"),
+  handler: async (ctx, args) => {
+    const { company, me } = await assertCompanyAdmin(ctx, args.companyId);
+    const title = args.title.trim();
+    if (title.length === 0) throw new Error("Job title is required");
+    if (args.salaryMin < 0 || args.salaryMax < args.salaryMin) {
+      throw new Error("Salary range is invalid");
+    }
+    await assertOpenJobSlot(ctx, company._id);
+    return await ctx.db.insert("jobs", {
+      title,
+      companyId: company._id,
+      createdBy: me._id,
+      status: "open",
+      salaryMin: args.salaryMin,
+      salaryMax: args.salaryMax,
+      currency: args.currency,
+      skillsRequired: args.skillsRequired.map((s) => s.trim()).filter(Boolean),
+      seniority: args.seniority,
+      workMode: args.workMode,
+      location: args.location.trim(),
+      description: args.description.trim(),
+      postedAt: Date.now(),
+    });
+  },
+});
+
+/** Edit a job belonging to a company the caller administers. */
+export const updateJob = mutation({
+  args: { jobId: v.id("jobs"), ...jobEditableFields },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const job = await ctx.db.get(args.jobId);
+    if (job === null) throw new Error("Job not found");
+    await assertCompanyAdmin(ctx, job.companyId);
+    const title = args.title.trim();
+    if (title.length === 0) throw new Error("Job title is required");
+    if (args.salaryMin < 0 || args.salaryMax < args.salaryMin) {
+      throw new Error("Salary range is invalid");
+    }
+    await ctx.db.patch(job._id, {
+      title,
+      salaryMin: args.salaryMin,
+      salaryMax: args.salaryMax,
+      currency: args.currency,
+      skillsRequired: args.skillsRequired.map((s) => s.trim()).filter(Boolean),
+      seniority: args.seniority,
+      workMode: args.workMode,
+      location: args.location.trim(),
+      description: args.description.trim(),
+      // The description changed, so any stale embedding must be recomputed.
+      embedding: undefined,
+    });
+    return null;
+  },
+});
+
+/** Open / close a job (closed jobs disappear from search). */
+export const setJobStatus = mutation({
+  args: {
+    jobId: v.id("jobs"),
+    status: v.union(v.literal("open"), v.literal("closed")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const job = await ctx.db.get(args.jobId);
+    if (job === null) throw new Error("Job not found");
+    await assertCompanyAdmin(ctx, job.companyId);
+    if (args.status === "open" && job.status === "closed") {
+      await assertOpenJobSlot(ctx, job.companyId, job._id);
+    }
+    await ctx.db.patch(job._id, { status: args.status });
+    return null;
+  },
+});
+
+/** Delete a job plus its applications and saved-job rows. */
+export const deleteJob = mutation({
+  args: { jobId: v.id("jobs") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const job = await ctx.db.get(args.jobId);
+    if (job === null) throw new Error("Job not found");
+    await assertCompanyAdmin(ctx, job.companyId);
+
+    const applications = await ctx.db
+      .query("applications")
+      .withIndex("by_job", (q) => q.eq("jobId", job._id))
+      .collect();
+    for (const app of applications) await ctx.db.delete(app._id);
+
+    // savedJobs has no by_job index; the table stays small enough to scan.
+    const saves = await ctx.db.query("savedJobs").collect();
+    for (const save of saves) {
+      if (save.jobId === job._id) await ctx.db.delete(save._id);
+    }
+
+    await ctx.db.delete(job._id);
+    return null;
   },
 });

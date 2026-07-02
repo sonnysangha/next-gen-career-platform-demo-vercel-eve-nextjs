@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import {
   getUserByIdentity,
   profileDraftDocValidator,
@@ -65,6 +65,54 @@ export const getLatestCareerPlan = query({
       .withIndex("by_userId", (q) => q.eq("userId", me._id))
       .order("desc")
       .first();
+  },
+});
+
+/** Delete one of the current user's outreach drafts. */
+export const deleteOutreachDraft = mutation({
+  args: { draftId: v.id("outreachDrafts") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const me = await getUserByIdentity(ctx);
+    if (me === null) throw new Error("Not authenticated");
+    const draft = await ctx.db.get(args.draftId);
+    if (draft === null || draft.userId !== me._id) {
+      throw new Error("Not authorized to delete this draft");
+    }
+    await ctx.db.delete(draft._id);
+    return null;
+  },
+});
+
+/** Delete one of the current user's profile drafts. */
+export const deleteProfileDraft = mutation({
+  args: { draftId: v.id("profileDrafts") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const me = await getUserByIdentity(ctx);
+    if (me === null) throw new Error("Not authenticated");
+    const draft = await ctx.db.get(args.draftId);
+    if (draft === null || draft.userId !== me._id) {
+      throw new Error("Not authorized to delete this draft");
+    }
+    await ctx.db.delete(draft._id);
+    return null;
+  },
+});
+
+/** Delete one of the current user's career plans. */
+export const deleteCareerPlan = mutation({
+  args: { planId: v.id("careerPlans") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const me = await getUserByIdentity(ctx);
+    if (me === null) throw new Error("Not authenticated");
+    const plan = await ctx.db.get(args.planId);
+    if (plan === null || plan.userId !== me._id) {
+      throw new Error("Not authorized to delete this plan");
+    }
+    await ctx.db.delete(plan._id);
+    return null;
   },
 });
 

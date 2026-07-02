@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { PenLine } from "lucide-react";
+import { useRef, useState } from "react";
+import { ImagePlus, Loader2, PenLine, X } from "lucide-react";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { UserAvatar } from "@/components/user-avatar";
+import { useImageUpload } from "@/components/image-input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -29,18 +30,39 @@ export function PostComposer({
   currentUser: { name: string; imageUrl?: string | null } | null;
 }) {
   const createPost = useMutation(api.feed.createPost);
+  const { upload, uploading } = useImageUpload();
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const [content, setContent] = useState("");
   const [kind, setKind] = useState("update");
+  const [image, setImage] = useState<{ file: File; preview: string } | null>(null);
   const [posting, setPosting] = useState(false);
+
+  function pickImage(file: File | undefined) {
+    if (!file) return;
+    if (image) URL.revokeObjectURL(image.preview);
+    setImage({ file, preview: URL.createObjectURL(file) });
+  }
+
+  function clearImage() {
+    if (image) URL.revokeObjectURL(image.preview);
+    setImage(null);
+  }
 
   async function onPost() {
     const text = content.trim();
     if (!text) return;
     setPosting(true);
     try {
-      await createPost({ content: text, kind: kind as never });
+      let imageStorageId;
+      if (image) {
+        imageStorageId = (await upload(image.file)) ?? undefined;
+        if (imageStorageId === undefined) return; // upload error already toasted
+      }
+      await createPost({ content: text, kind: kind as never, imageStorageId });
       setContent("");
       setKind("update");
+      clearImage();
       toast.success("Posted to your network");
     } catch {
       toast.error("Could not post. Try again.");
@@ -48,6 +70,8 @@ export function PostComposer({
       setPosting(false);
     }
   }
+
+  const busy = posting || uploading;
 
   return (
     <div className="rounded-xl border bg-card p-4">
@@ -63,25 +87,70 @@ export function PostComposer({
             placeholder="Share an update, a win, or a hot take…"
             className="min-h-20 resize-none border-0 bg-muted/40 focus-visible:ring-0"
           />
+
+          {image && (
+            <div className="relative mt-2 overflow-hidden rounded-lg border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={image.preview}
+                alt="Attached"
+                className="max-h-72 w-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                aria-label="Remove image"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           <div className="mt-2 flex items-center justify-between gap-2">
-            <Select value={kind} onValueChange={(v) => setKind(v ?? "update")}>
-              <SelectTrigger className="h-9 w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {KINDS.map((k) => (
-                  <SelectItem key={k.value} value={k.value}>
-                    {k.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-1.5">
+              <Select value={kind} onValueChange={(v) => setKind(v ?? "update")}>
+                <SelectTrigger className="h-9 w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {KINDS.map((k) => (
+                    <SelectItem key={k.value} value={k.value}>
+                      {k.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => {
+                  pickImage(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => fileRef.current?.click()}
+                aria-label="Add image"
+                disabled={busy}
+              >
+                <ImagePlus className="h-4 w-4" />
+              </Button>
+            </div>
             <Button
               onClick={onPost}
-              disabled={posting || !content.trim()}
+              disabled={busy || !content.trim()}
               className="gap-1.5"
             >
-              <PenLine className="h-4 w-4" />
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <PenLine className="h-4 w-4" />
+              )}
               Post
             </Button>
           </div>

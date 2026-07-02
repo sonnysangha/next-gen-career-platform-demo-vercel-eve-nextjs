@@ -11,8 +11,14 @@ import { Doc, Id } from "./_generated/dataModel";
  *
  * Idempotent: wipes every table, then re-inserts a deterministic network
  * (faker is seeded with 12345). Insert order respects foreign keys:
- *   companies -> recruiters -> jobs -> users -> profiles/experiences/skills
- *   -> posts -> comments/likes -> follows -> savedJobs.
+ *   companies -> recruiters -> jobs -> users -> profiles/experiences/education/
+ *   skills -> skillEndorsements -> posts -> comments/likes -> follows
+ *   -> applications.
+ *
+ * Every job is linked to a company (companyId), every experience to its
+ * seeded company where one matches, every application to a (user, job,
+ * company) triple, and every endorsement count is backed by real
+ * skillEndorsements rows.
  *
  * Volume (a few thousand rows total) fits comfortably inside a single
  * mutation's read/write budget.
@@ -27,6 +33,9 @@ const avatarFor = (username: string) =>
   `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(
     username,
   )}`;
+/** Deterministic photographic post/cover images. */
+const photoFor = (seed: string, w = 800, h = 450) =>
+  `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
 
 type SeedCompany = {
   name: string;
@@ -489,11 +498,15 @@ async function wipeTable(
     | "users"
     | "profiles"
     | "experiences"
+    | "education"
     | "skills"
+    | "skillEndorsements"
     | "posts"
     | "comments"
     | "likes"
     | "follows"
+    | "notifications"
+    | "applications"
     | "savedJobs"
     | "outreachDrafts"
     | "profileDrafts"
@@ -520,10 +533,13 @@ export const run = internalMutation({
     recruiters: v.number(),
     jobs: v.number(),
     users: v.number(),
+    education: v.number(),
+    endorsements: v.number(),
     posts: v.number(),
     comments: v.number(),
     likes: v.number(),
     follows: v.number(),
+    applications: v.number(),
   }),
   handler: async (ctx) => {
     faker.seed(12345);
@@ -531,11 +547,15 @@ export const run = internalMutation({
     // 1) Wipe everything (children first to avoid dangling references while
     //    iterating; order isn't strictly required since we delete by _id).
     await wipeTable(ctx, "savedJobs");
+    await wipeTable(ctx, "applications");
+    await wipeTable(ctx, "notifications");
     await wipeTable(ctx, "likes");
     await wipeTable(ctx, "comments");
     await wipeTable(ctx, "follows");
     await wipeTable(ctx, "posts");
+    await wipeTable(ctx, "skillEndorsements");
     await wipeTable(ctx, "skills");
+    await wipeTable(ctx, "education");
     await wipeTable(ctx, "experiences");
     await wipeTable(ctx, "profiles");
     await wipeTable(ctx, "aiRuns");
@@ -580,7 +600,10 @@ export const run = internalMutation({
     }
 
     // 4) Jobs — handcrafted storyline jobs first, then ~44 generated ones.
+    //    Every job is linked to a seeded company via companyId; a few of the
+    //    generated ones are closed to exercise the open/closed lifecycle.
     const jobIdByTitle = new Map<string, Id<"jobs">>();
+    const openJobs: { jobId: Id<"jobs">; companyId: Id<"companies"> }[] = [];
     const now = Date.now();
     let jobCount = 0;
 
@@ -592,6 +615,7 @@ export const run = internalMutation({
         title: j.title,
         companyId,
         recruiterId,
+        status: "open",
         salaryMin: j.salaryMin,
         salaryMax: j.salaryMax,
         currency: j.currency,
@@ -604,6 +628,7 @@ export const run = internalMutation({
       });
       // Only remember the first occurrence of a title (used to save "AI Engineer").
       if (!jobIdByTitle.has(j.title)) jobIdByTitle.set(j.title, id);
+      openJobs.push({ jobId: id, companyId });
       jobCount += 1;
     }
 
@@ -617,10 +642,13 @@ export const run = internalMutation({
       const salaryBase = faker.number.int({ min: 80_000, max: 180_000 });
       const skills = pickSome(ALL_SKILLS, faker.number.int({ min: 3, max: 6 }));
       const title = faker.helpers.arrayElement(JOB_TITLES);
-      await ctx.db.insert("jobs", {
+      // ~6% of generated jobs are closed (filled roles stay on the company page).
+      const closed = faker.datatype.boolean({ probability: 0.06 });
+      const id = await ctx.db.insert("jobs", {
         title,
         companyId,
         recruiterId: undefined,
+        status: closed ? "closed" : "open",
         salaryMin: salaryBase,
         salaryMax: salaryBase + faker.number.int({ min: 20_000, max: 70_000 }),
         currency: "USD",
@@ -631,12 +659,15 @@ export const run = internalMutation({
         description: faker.lorem.paragraph({ min: 3, max: 5 }),
         postedAt: now - faker.number.int({ min: 0, max: 45 }) * 86_400_000,
       });
+      if (!closed) openJobs.push({ jobId: id, companyId });
       jobCount += 1;
     }
 
-    // 5) Users + profiles + experiences + skills (~40 users).
+    // 5) Users + profiles + experiences + education + skills (~40 users).
     const userIds: Id<"users">[] = [];
     const usedUsernames = new Set<string>();
+    const allSkills: { skillId: Id<"skills">; ownerId: Id<"users"> }[] = [];
+    let educationTotal = 0;
     const targetUsers = 40;
 
     for (let i = 0; i < targetUsers; i++) {
@@ -645,7 +676,7 @@ export const run = internalMutation({
       const name = `${firstName} ${lastName}`;
 
       // Deterministic, unique username slug.
-      let baseUsername = faker.helpers
+      const baseUsername = faker.helpers
         .slugify(`${firstName}-${lastName}`)
         .toLowerCase();
       let username = baseUsername;
@@ -676,9 +707,23 @@ export const run = internalMutation({
         headline: `${faker.helpers.arrayElement(JOB_TITLES)} at ${faker.company.name()}`,
         about: faker.lorem.sentences({ min: 2, max: 4 }),
         location: `${faker.location.city()}, ${faker.location.countryCode()}`,
+        pronouns: faker.helpers.maybe(
+          () => faker.helpers.arrayElement(["she/her", "he/him", "they/them"]),
+          { probability: 0.4 },
+        ),
+        websiteUrl: faker.helpers.maybe(() => `https://${username}.dev`, {
+          probability: 0.3,
+        }),
+        githubUrl: faker.helpers.maybe(
+          () => `https://github.com/${username}`,
+          { probability: 0.45 },
+        ),
         targetRole: targetRole ?? undefined,
         openToWork: faker.datatype.boolean({ probability: 0.35 }),
-        coverImageUrl: undefined,
+        coverImageUrl: faker.helpers.maybe(
+          () => photoFor(`cover-${username}`, 1200, 300),
+          { probability: 0.3 },
+        ),
       });
 
       // 1–3 experiences.
@@ -710,18 +755,62 @@ export const run = internalMutation({
         });
       }
 
-      // 4–8 skills.
+      // 1–2 education entries.
+      const eduCount = faker.number.int({ min: 1, max: 2 });
+      for (let d = 0; d < eduCount; d++) {
+        const eduStart = faker.number.int({ min: 2008, max: 2019 });
+        await ctx.db.insert("education", {
+          userId,
+          school: `University of ${faker.location.city()}`,
+          degree: faker.helpers.arrayElement(["BSc", "BA", "MSc", "MEng"]),
+          field: faker.helpers.arrayElement([
+            "Computer Science",
+            "Software Engineering",
+            "Information Systems",
+            "Mathematics",
+            "Human-Computer Interaction",
+            "Electrical Engineering",
+          ]),
+          startYear: String(eduStart),
+          endYear: String(eduStart + faker.number.int({ min: 3, max: 5 })),
+          description: faker.helpers.maybe(() => faker.lorem.sentence(), {
+            probability: 0.4,
+          }),
+        });
+        educationTotal += 1;
+      }
+
+      // 4–8 skills. Endorsement counts are reconciled against real
+      // skillEndorsements rows after every user exists (step 5b).
       const skillNames = pickSome(
         ALL_SKILLS,
         faker.number.int({ min: 4, max: 8 }),
       );
       for (const skillName of skillNames) {
-        await ctx.db.insert("skills", {
+        const skillId = await ctx.db.insert("skills", {
           userId,
           name: skillName,
-          endorsements: faker.number.int({ min: 0, max: 120 }),
+          endorsements: 0,
         });
+        allSkills.push({ skillId, ownerId: userId });
       }
+    }
+
+    // 5b) Skill endorsements — real rows from other seeded users, with the
+    //     denormalized `endorsements` count kept honest.
+    let endorsementTotal = 0;
+    for (const { skillId, ownerId } of allSkills) {
+      const n = faker.number.int({ min: 0, max: 6 });
+      if (n === 0) continue;
+      const endorsers = faker.helpers.arrayElements(
+        userIds.filter((u) => u !== ownerId),
+        n,
+      );
+      for (const endorserId of endorsers) {
+        await ctx.db.insert("skillEndorsements", { skillId, endorserId });
+      }
+      await ctx.db.patch(skillId, { endorsements: endorsers.length });
+      endorsementTotal += endorsers.length;
     }
 
     // 6) Posts (~100) with kind variety + consistent counts.
@@ -750,7 +839,7 @@ export const run = internalMutation({
       const postId = await ctx.db.insert("posts", {
         authorId,
         content,
-        imageUrl: faker.helpers.maybe(() => avatarFor(`post-${p}`), {
+        imageUrl: faker.helpers.maybe(() => photoFor(`post-${p}`), {
           probability: 0.2,
         }),
         kind,
@@ -822,15 +911,63 @@ export const run = internalMutation({
       }
     }
 
+    // 11) Applications — ~35 unique (user, open job) pairs across the
+    //     pipeline, each linked to the job's company. Populates applicant
+    //     counts and the company pipeline with realistic data.
+    const applicationPairs = new Set<string>();
+    let applicationTotal = 0;
+    const targetApplications = 35;
+    let applicationAttempts = 0;
+    while (
+      applicationTotal < targetApplications &&
+      applicationAttempts < targetApplications * 4
+    ) {
+      applicationAttempts += 1;
+      const { jobId, companyId } = faker.helpers.arrayElement(openJobs);
+      const userId = faker.helpers.arrayElement(userIds);
+      const key = `${userId}:${jobId}`;
+      if (applicationPairs.has(key)) continue;
+      applicationPairs.add(key);
+      const status = faker.helpers.weightedArrayElement([
+        { value: "submitted" as const, weight: 5 },
+        { value: "reviewed" as const, weight: 2 },
+        { value: "interviewing" as const, weight: 2 },
+        { value: "offer" as const, weight: 1 },
+        { value: "rejected" as const, weight: 2 },
+      ]);
+      const createdAt =
+        now - faker.number.int({ min: 1, max: 30 }) * 86_400_000;
+      await ctx.db.insert("applications", {
+        jobId,
+        userId,
+        companyId,
+        coverNote: faker.helpers.maybe(
+          () => faker.lorem.sentences({ min: 1, max: 2 }),
+          { probability: 0.6 },
+        ),
+        status,
+        createdAt,
+        updatedAt:
+          status === "submitted"
+            ? createdAt
+            : createdAt +
+              faker.number.int({ min: 1, max: 5 }) * 86_400_000,
+      });
+      applicationTotal += 1;
+    }
+
     return {
       companies: COMPANIES.length,
       recruiters: recruiterIdByKey.size,
       jobs: jobCount,
       users: userIds.length,
+      education: educationTotal,
+      endorsements: endorsementTotal,
       posts: postIds.length,
       comments: commentTotal,
       likes: likeTotal,
       follows: followTotal,
+      applications: applicationTotal,
     };
   },
 });

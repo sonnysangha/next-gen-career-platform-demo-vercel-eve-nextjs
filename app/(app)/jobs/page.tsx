@@ -1,19 +1,29 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useAction } from "convex/react";
 import { useAuth } from "@clerk/nextjs";
-import { Search, Briefcase, Building2, MapPin, Bookmark } from "lucide-react";
+import {
+  Search,
+  Briefcase,
+  Building2,
+  MapPin,
+  Bookmark,
+  FileText,
+} from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { JobCard, MatchBadge } from "@/components/jobs/job-card";
+import { ApplyButton } from "@/components/jobs/apply-dialog";
 import { AiActionButton } from "@/components/ai/ai-action-button";
 import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -33,6 +43,7 @@ function JobsInner() {
   const { has } = useAuth();
   const jobMatcherLocked = !(has?.({ feature: AI_FEATURES.job_matcher }) ?? false);
 
+  const [tab, setTab] = useState<string>("browse");
   const [search, setSearch] = useState(params.get("q") ?? "");
   const [seniority, setSeniority] = useState<string>("all");
   const [workMode, setWorkMode] = useState<string>("all");
@@ -47,11 +58,25 @@ function JobsInner() {
     void ensureMyProfileEmbedding().catch(() => {});
   }, [ensureMyProfileEmbedding]);
 
-  const jobs = useQuery(api.jobs.getJobs, {
-    search: search || undefined,
-    seniority: seniority === "all" ? undefined : (seniority as never),
-    workMode: workMode === "all" ? undefined : (workMode as never),
-  });
+  const browseJobs = useQuery(
+    api.jobs.getJobs,
+    tab === "browse"
+      ? {
+          search: search || undefined,
+          seniority: seniority === "all" ? undefined : (seniority as never),
+          workMode: workMode === "all" ? undefined : (workMode as never),
+        }
+      : "skip"
+  );
+  const savedJobs = useQuery(
+    api.jobs.getSavedJobs,
+    tab === "saved" ? {} : "skip"
+  );
+
+  const jobs =
+    tab === "saved"
+      ? savedJobs?.map((j) => ({ ...j, matchScore: null }))
+      : browseJobs;
 
   const activeId = selected ?? jobs?.[0]?._id ?? null;
   const detail = useQuery(
@@ -63,45 +88,71 @@ function JobsInner() {
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       {/* List column */}
       <div className="space-y-3">
-        <div className="space-y-2 rounded-xl border bg-card p-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search title, skill, company…"
-              className="pl-8"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Select value={seniority} onValueChange={(v) => setSeniority(v ?? "all")}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Seniority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All levels</SelectItem>
-                {["junior", "mid", "senior", "staff", "principal"].map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {seniorityLabel(s)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={workMode} onValueChange={(v) => setWorkMode(v ?? "all")}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Work mode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Any location</SelectItem>
-                {["remote", "hybrid", "onsite"].map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {workModeLabel(m)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex items-center justify-between gap-2">
+          <Tabs value={tab} onValueChange={(v) => setTab(String(v ?? "browse"))}>
+            <TabsList>
+              <TabsTrigger value="browse" className="gap-1.5">
+                <Briefcase className="h-3.5 w-3.5" />
+                Browse
+              </TabsTrigger>
+              <TabsTrigger value="saved" className="gap-1.5">
+                <Bookmark className="h-3.5 w-3.5" />
+                Saved
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Button
+            render={<Link href="/applications" />}
+            variant="ghost"
+            size="sm"
+            className="gap-1.5"
+          >
+            <FileText className="h-4 w-4" />
+            My applications
+          </Button>
         </div>
+
+        {tab === "browse" && (
+          <div className="space-y-2 rounded-xl border bg-card p-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search title, skill, company…"
+                className="pl-8"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Select value={seniority} onValueChange={(v) => setSeniority(v ?? "all")}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Seniority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All levels</SelectItem>
+                  {["junior", "mid", "senior", "staff", "principal"].map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {seniorityLabel(s)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={workMode} onValueChange={(v) => setWorkMode(v ?? "all")}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Work mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any location</SelectItem>
+                  {["remote", "hybrid", "onsite"].map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {workModeLabel(m)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
 
         {jobs === undefined ? (
           <div className="space-y-3">
@@ -110,11 +161,19 @@ function JobsInner() {
             ))}
           </div>
         ) : jobs.length === 0 ? (
-          <EmptyState
-            icon={Briefcase}
-            title="No jobs match"
-            description="Try clearing filters or a different search."
-          />
+          tab === "saved" ? (
+            <EmptyState
+              icon={Bookmark}
+              title="No saved jobs"
+              description="Tap the bookmark on any job to keep it here for later."
+            />
+          ) : (
+            <EmptyState
+              icon={Briefcase}
+              title="No jobs match"
+              description="Try clearing filters or a different search."
+            />
+          )
         ) : (
           <div className="space-y-3">
             {jobs.map((job) => (
@@ -139,13 +198,25 @@ function JobsInner() {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-semibold">{detail.title}</h2>
+                  {detail.status === "closed" && (
+                    <Badge variant="outline">Closed</Badge>
+                  )}
                   {typeof detail.matchScore === "number" && (
                     <MatchBadge score={detail.matchScore} />
                   )}
                 </div>
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Building2 className="h-4 w-4" />
-                  {detail.company?.name}
+                  {detail.company ? (
+                    <Link
+                      href={`/companies/${detail.company.slug}`}
+                      className="hover:underline"
+                    >
+                      {detail.company.name}
+                    </Link>
+                  ) : (
+                    "Unknown company"
+                  )}
                   <span>·</span>
                   <MapPin className="h-4 w-4" />
                   {detail.location}
@@ -158,6 +229,14 @@ function JobsInner() {
                   </span>
                 </div>
               </div>
+
+              <ApplyButton
+                jobId={detail._id}
+                jobTitle={detail.title}
+                companyName={detail.company?.name ?? "the company"}
+                appliedByMe={detail.appliedByMe}
+                closed={detail.status === "closed"}
+              />
 
               <AiActionButton
                 locked={jobMatcherLocked}
@@ -199,7 +278,7 @@ function JobsInner() {
             <EmptyState
               icon={Bookmark}
               title="Select a job"
-              description="Pick a role on the left to see details and match with AI."
+              description="Pick a role on the left to see details, apply, and match with AI."
             />
           )}
         </div>

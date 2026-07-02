@@ -80,6 +80,15 @@ export default async function LandingPage() {
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
               Free to join. Upgrade to Pro to unlock the AI Career Agent.
+              <br />
+              Hiring?{" "}
+              <Link
+                href="/sign-up?type=company"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Sign up as a company
+              </Link>{" "}
+              to post jobs and review applicants.
             </p>
           </div>
 
