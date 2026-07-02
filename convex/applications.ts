@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import {
   getUserByIdentity,
+  getProfileForUser,
   assertCompanyAdmin,
   orgHasCompanyPro,
   notify,
@@ -13,6 +14,7 @@ import {
   profileDocValidator,
   skillDocValidator,
 } from "./model";
+import { computeMatchScore } from "./jobs";
 
 /** Apply to a job. Re-applying after a withdrawal re-activates the row. */
 export const apply = mutation({
@@ -110,11 +112,14 @@ export const getMyApplications = query({
       ...applicationDocValidator.fields,
       job: v.union(jobDocValidator, v.null()),
       company: v.union(companyDocValidator, v.null()),
+      matchScore: v.union(v.number(), v.null()),
     }),
   ),
   handler: async (ctx) => {
     const me = await getUserByIdentity(ctx);
     if (me === null) return [];
+    const myProfile = await getProfileForUser(ctx, me._id);
+    const myEmbedding = myProfile?.embedding;
     const applications = await ctx.db
       .query("applications")
       .withIndex("by_user", (q) => q.eq("userId", me._id))
@@ -124,11 +129,12 @@ export const getMyApplications = query({
       applications.map(async (app) => {
         const job = await ctx.db.get(app.jobId);
         const company = await ctx.db.get(app.companyId);
+        const matchScore = computeMatchScore(myEmbedding, job?.embedding);
         const jobRest =
           job === null
             ? null
             : (({ embedding: _e, ...rest }) => rest)(job);
-        return { ...app, job: jobRest, company };
+        return { ...app, job: jobRest, company, matchScore };
       }),
     );
   },

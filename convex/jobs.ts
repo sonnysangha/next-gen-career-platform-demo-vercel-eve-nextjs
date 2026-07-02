@@ -69,7 +69,7 @@ const jobWithCompanyValidator = v.object({
  * 0–100 vector match score between a user's profile embedding and a job's
  * embedding, or null when either side lacks an embedding.
  */
-function computeMatchScore(
+export function computeMatchScore(
   userEmbedding: number[] | undefined,
   jobEmbedding: number[] | undefined,
 ): number | null {
@@ -310,11 +310,14 @@ export const getSavedJobs = query({
       company: v.union(companyDocValidator, v.null()),
       savedAt: v.number(),
       savedByMe: v.boolean(),
+      matchScore: v.union(v.number(), v.null()),
     }),
   ),
   handler: async (ctx) => {
     const me = await getUserByIdentity(ctx);
     if (me === null) return [];
+    const myProfile = await getProfileForUser(ctx, me._id);
+    const myEmbedding = myProfile?.embedding;
 
     const saved = await ctx.db
       .query("savedJobs")
@@ -332,6 +335,7 @@ export const getSavedJobs = query({
         company,
         savedAt: row.savedAt,
         savedByMe: true,
+        matchScore: computeMatchScore(myEmbedding, job.embedding),
       });
     }
     return results;

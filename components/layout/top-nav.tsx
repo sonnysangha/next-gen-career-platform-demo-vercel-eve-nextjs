@@ -40,12 +40,20 @@ export function TopNav() {
     return pathname === href || pathname.startsWith(href + "/");
   }
 
-  const navItems = myCompany
-    ? [
-        ...NAV_ITEMS,
-        { href: "/company", label: "Dashboard", icon: LayoutDashboard },
-      ]
-    : NAV_ITEMS;
+  // Company accounts get their dashboard; everyone else gets an entry point
+  // into the company flow (/company shows a set-up CTA when there's none).
+  const navItems =
+    myCompany === undefined
+      ? NAV_ITEMS
+      : myCompany
+        ? [
+            ...NAV_ITEMS,
+            { href: "/company", label: "Dashboard", icon: LayoutDashboard },
+          ]
+        : [
+            ...NAV_ITEMS,
+            { href: "/company", label: "For companies", icon: LayoutDashboard },
+          ];
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">

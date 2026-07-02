@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { useAuth } from "@clerk/nextjs";
@@ -360,7 +361,16 @@ export default function ProfilePage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{exp.title}</p>
-                  <p className="text-sm text-muted-foreground">{exp.company}</p>
+                  {exp.companySlug ? (
+                    <Link
+                      href={`/companies/${exp.companySlug}`}
+                      className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+                    >
+                      {exp.company}
+                    </Link>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{exp.company}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     {exp.startDate} – {exp.endDate ?? "Present"}
                     {exp.location ? ` · ${exp.location}` : ""}

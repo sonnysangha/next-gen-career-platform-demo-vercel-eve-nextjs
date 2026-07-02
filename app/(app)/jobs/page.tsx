@@ -73,10 +73,7 @@ function JobsInner() {
     tab === "saved" ? {} : "skip"
   );
 
-  const jobs =
-    tab === "saved"
-      ? savedJobs?.map((j) => ({ ...j, matchScore: null }))
-      : browseJobs;
+  const jobs = tab === "saved" ? savedJobs : browseJobs;
 
   const activeId = selected ?? jobs?.[0]?._id ?? null;
   const detail = useQuery(

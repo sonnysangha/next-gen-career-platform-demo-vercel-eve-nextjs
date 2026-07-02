@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery, useMutation } from "convex/react";
+import { useEffect } from "react";
+import { useAction, useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
 import { FileText, MapPin, Undo2, Send } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { CompanyLogo } from "@/components/company-logo";
+import { MatchBadge } from "@/components/jobs/job-card";
 import { EmptyState } from "@/components/empty-state";
 import {
   APPLICATION_STATUS_LABEL,
@@ -19,6 +21,14 @@ import { formatSalary, timeAgo, workModeLabel } from "@/lib/format";
 export default function ApplicationsPage() {
   const applications = useQuery(api.applications.getMyApplications, {});
   const withdraw = useMutation(api.applications.withdraw);
+
+  // Warm up the profile embedding so each application shows its % match.
+  const ensureMyProfileEmbedding = useAction(
+    api.embeddings.ensureMyProfileEmbedding,
+  );
+  useEffect(() => {
+    void ensureMyProfileEmbedding().catch(() => {});
+  }, [ensureMyProfileEmbedding]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -81,11 +91,16 @@ export default function ApplicationsPage() {
                     )}
                   </div>
                 </Link>
-                <Badge
-                  className={`shrink-0 border-transparent ${applicationStatusTone(app.status)}`}
-                >
-                  {APPLICATION_STATUS_LABEL[app.status] ?? app.status}
-                </Badge>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <Badge
+                    className={`border-transparent ${applicationStatusTone(app.status)}`}
+                  >
+                    {APPLICATION_STATUS_LABEL[app.status] ?? app.status}
+                  </Badge>
+                  {typeof app.matchScore === "number" && (
+                    <MatchBadge score={app.matchScore} />
+                  )}
+                </div>
               </div>
 
               <div className="mt-3 flex items-center justify-between border-t pt-2 text-xs text-muted-foreground">

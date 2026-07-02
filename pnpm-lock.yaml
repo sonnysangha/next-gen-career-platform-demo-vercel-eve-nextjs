@@ -28,7 +28,7 @@ importers:
         version: 1.42.1(@clerk/react@6.11.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       eve:
         specifier: ^0.17.1
-        version: 0.17.1(ai@7.0.8(zod@4.4.3))(dotenv@17.4.2)(jiti@2.7.0)(next@16.2.9(@babel/core@7.29.7)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
+        version: 0.17.1(ai@7.0.8(zod@4.4.3))(dotenv@17.4.2)(jiti@2.7.0)(microsandbox@0.6.1)(next@16.2.9(@babel/core@7.29.7)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       lucide-react:
         specifier: ^1.22.0
         version: 1.22.0(react@19.2.4)
@@ -93,6 +93,9 @@ importers:
       eslint-config-next:
         specifier: 16.2.9
         version: 16.2.9(@typescript-eslint/parser@8.62.1(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
+      microsandbox:
+        specifier: ^0.6.1
+        version: 0.6.1
       tailwindcss:
         specifier: ^4
         version: 4.3.2
@@ -952,6 +955,38 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@superradcompany/microsandbox-darwin-arm64@0.6.1':
+    resolution: {integrity: sha512-x9li7pDtdDb0gqMioucF3KBSp9CcJmSMjaLdwNu6SkzR+UmJ6hCXT2rrltz0I5v/87q6S0YuPnOpn73OwjC1fQ==}
+    engines: {node: '>= 22'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@superradcompany/microsandbox-linux-arm64-gnu@0.6.1':
+    resolution: {integrity: sha512-0SGSx47JEdF1cqVna9VNcS53Jk+LVAEnbO4v5knyc46vdol68iRYyDwXaeUTtvIpkdQtJiECyIjCllkZdd6f0g==}
+    engines: {node: '>= 22'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@superradcompany/microsandbox-linux-x64-gnu@0.6.1':
+    resolution: {integrity: sha512-qdXug3Zp1tTTcz4uuYKf2igWW/aFOTH+kxW180o4iUEGuUYyjSCVR/GN+Klfs6xGlP80txTr5J0uR7Nx3m1iqw==}
+    engines: {node: '>= 22'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@superradcompany/microsandbox-win32-arm64-msvc@0.6.1':
+    resolution: {integrity: sha512-VEm1LsE3se4rCiXm0u2Y+MCTh6l0nnBMMJgMTv0Sh7neS6u/tARtl99PzTyCoV5x87yFd2nJQwfbC2VcJ8hmBQ==}
+    engines: {node: '>= 22'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@superradcompany/microsandbox-win32-x64-msvc@0.6.1':
+    resolution: {integrity: sha512-zOCGPIuU7GQlbyF/VWgvQg/lfKn7sdFb23azLEtRyVi2KrblQ7rFnH+rGPQEyyerY1skn+nXHyHStCwdT7yspA==}
+    engines: {node: '>= 22'}
+    cpu: [x64]
+    os: [win32]
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
@@ -2918,6 +2953,11 @@ packages:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
     engines: {node: '>=8.6'}
 
+  microsandbox@0.6.1:
+    resolution: {integrity: sha512-+q4ZpTXQGTQmSQe3LXE9lB42/1dLEGHoqbzMhB3FwxfHchKXJSqQnEh3tycRp+3MvOQkmOuQb7Hwr/BJoy0ziQ==}
+    engines: {node: '>= 22'}
+    hasBin: true
+
   mime-db@1.54.0:
     resolution: {integrity: sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==}
     engines: {node: '>= 0.6'}
@@ -4694,6 +4734,21 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
+  '@superradcompany/microsandbox-darwin-arm64@0.6.1':
+    optional: true
+
+  '@superradcompany/microsandbox-linux-arm64-gnu@0.6.1':
+    optional: true
+
+  '@superradcompany/microsandbox-linux-x64-gnu@0.6.1':
+    optional: true
+
+  '@superradcompany/microsandbox-win32-arm64-msvc@0.6.1':
+    optional: true
+
+  '@superradcompany/microsandbox-win32-x64-msvc@0.6.1':
+    optional: true
+
   '@swc/helpers@0.5.15':
     dependencies:
       tslib: 2.8.1
@@ -5820,11 +5875,12 @@ snapshots:
 
   etag@1.8.1: {}
 
-  eve@0.17.1(ai@7.0.8(zod@4.4.3))(dotenv@17.4.2)(jiti@2.7.0)(next@16.2.9(@babel/core@7.29.7)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4):
+  eve@0.17.1(ai@7.0.8(zod@4.4.3))(dotenv@17.4.2)(jiti@2.7.0)(microsandbox@0.6.1)(next@16.2.9(@babel/core@7.29.7)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4):
     dependencies:
       ai: 7.0.8(zod@4.4.3)
       nitro: 3.0.260610-beta(dotenv@17.4.2)(jiti@2.7.0)
     optionalDependencies:
+      microsandbox: 0.6.1
       next: 16.2.9(@babel/core@7.29.7)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react: 19.2.4
     transitivePeerDependencies:
@@ -6917,6 +6973,14 @@ snapshots:
     dependencies:
       braces: 3.0.3
       picomatch: 2.3.2
+
+  microsandbox@0.6.1:
+    optionalDependencies:
+      '@superradcompany/microsandbox-darwin-arm64': 0.6.1
+      '@superradcompany/microsandbox-linux-arm64-gnu': 0.6.1
+      '@superradcompany/microsandbox-linux-x64-gnu': 0.6.1
+      '@superradcompany/microsandbox-win32-arm64-msvc': 0.6.1
+      '@superradcompany/microsandbox-win32-x64-msvc': 0.6.1
 
   mime-db@1.54.0: {}
 

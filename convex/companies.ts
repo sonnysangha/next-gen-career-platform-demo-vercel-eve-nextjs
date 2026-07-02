@@ -7,12 +7,14 @@ import {
   profileDocValidator,
   authorSummaryValidator,
   getUserByIdentity,
+  getProfileForUser,
   isCompanyAdmin,
   getMyCompanyDoc,
   assertCompanyAdmin,
   baseSlugFrom,
   uniqueCompanySlug,
 } from "./model";
+import { computeMatchScore } from "./jobs";
 
 const jobIsOpen = (j: { status?: "open" | "closed" }) => j.status !== "closed";
 
@@ -58,7 +60,12 @@ export const getCompanyBySlug = query({
   returns: v.union(
     v.object({
       company: companyDocValidator,
-      jobs: v.array(jobDocValidator),
+      jobs: v.array(
+        v.object({
+          ...jobDocValidator.fields,
+          matchScore: v.union(v.number(), v.null()),
+        }),
+      ),
       recruiters: v.array(recruiterDocValidator),
       employees: v.array(
         v.object({
@@ -79,12 +86,17 @@ export const getCompanyBySlug = query({
 
     const me = await getUserByIdentity(ctx);
     const canManage = await isCompanyAdmin(ctx, company, me);
+    const myProfile = me !== null ? await getProfileForUser(ctx, me._id) : null;
+    const myEmbedding = myProfile?.embedding;
 
     const allJobs = await ctx.db
       .query("jobs")
       .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
       .collect();
-    const jobs = allJobs.filter(jobIsOpen);
+    const jobs = allJobs.filter(jobIsOpen).map((job) => ({
+      ...job,
+      matchScore: computeMatchScore(myEmbedding, job.embedding),
+    }));
 
     const recruiters = await ctx.db
       .query("recruiters")

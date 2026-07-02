@@ -43,6 +43,7 @@
     "concurrently": "^10.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "microsandbox": "^0.6.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

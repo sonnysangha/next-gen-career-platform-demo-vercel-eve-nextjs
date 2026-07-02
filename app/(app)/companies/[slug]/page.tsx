@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { useParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import {
   Building2,
   MapPin,
@@ -14,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { CompanyLogo } from "@/components/company-logo";
+import { MatchBadge } from "@/components/jobs/job-card";
 import { UserAvatar } from "@/components/user-avatar";
 import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,6 +29,15 @@ import {
 export default function CompanyPage() {
   const { slug } = useParams<{ slug: string }>();
   const data = useQuery(api.companies.getCompanyBySlug, { slug });
+
+  // Make sure the viewer's profile embedding exists so open roles get a
+  // % match score (same warm-up the jobs page does).
+  const ensureMyProfileEmbedding = useAction(
+    api.embeddings.ensureMyProfileEmbedding,
+  );
+  useEffect(() => {
+    void ensureMyProfileEmbedding().catch(() => {});
+  }, [ensureMyProfileEmbedding]);
 
   if (data === undefined) {
     return <Skeleton className="h-96 w-full rounded-xl" />;
@@ -118,7 +129,12 @@ export default function CompanyPage() {
                 className="flex items-center justify-between rounded-lg border p-3 hover:border-primary/40"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{job.title}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate font-medium">{job.title}</p>
+                    {typeof job.matchScore === "number" && (
+                      <MatchBadge score={job.matchScore} />
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {workModeLabel(job.workMode)} · {seniorityLabel(job.seniority)} ·{" "}
                     {job.location}

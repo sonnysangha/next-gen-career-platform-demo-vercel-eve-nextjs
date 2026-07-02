@@ -23,7 +23,13 @@ export const getProfileByUsername = query({
     v.object({
       user: userDocValidator,
       profile: v.union(profileDocValidator, v.null()),
-      experiences: v.array(experienceDocValidator),
+      experiences: v.array(
+        v.object({
+          ...experienceDocValidator.fields,
+          // Slug of the linked companies row, for click-through to its page.
+          companySlug: v.union(v.string(), v.null()),
+        }),
+      ),
       education: v.array(educationDocValidator),
       skills: v.array(
         v.object({
@@ -45,12 +51,21 @@ export const getProfileByUsername = query({
     const me = await getUserByIdentity(ctx);
     const profile = await getProfileForUser(ctx, user._id);
 
-    const experiences = await ctx.db
+    const experienceRows = await ctx.db
       .query("experiences")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .collect();
     // Newest first (present roles on top). "YYYY-MM" sorts lexicographically.
-    experiences.sort((a, b) => b.startDate.localeCompare(a.startDate));
+    experienceRows.sort((a, b) => b.startDate.localeCompare(a.startDate));
+    const experiences = await Promise.all(
+      experienceRows.map(async (exp) => ({
+        ...exp,
+        companySlug:
+          exp.companyId !== undefined
+            ? ((await ctx.db.get(exp.companyId))?.slug ?? null)
+            : null,
+      })),
+    );
 
     const education = await ctx.db
       .query("education")
