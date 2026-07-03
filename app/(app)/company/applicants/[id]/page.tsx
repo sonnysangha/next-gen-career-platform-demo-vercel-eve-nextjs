@@ -185,7 +185,7 @@ export default function ApplicantDetailPage() {
       <div className="grid gap-4 sm:grid-cols-[1fr_16rem]">
         {/* Cover letter */}
         <section className="rounded-xl border bg-card p-5">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold">
+          <h2 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold tracking-tight">
             <FileText className="h-4 w-4 text-muted-foreground" />
             Cover letter
           </h2>
@@ -199,7 +199,7 @@ export default function ApplicantDetailPage() {
             </p>
           )}
 
-          <h2 className="mb-3 mt-6 flex items-center gap-2 font-semibold">
+          <h2 className="mb-3 mt-6 flex items-center gap-2 font-heading text-lg font-semibold tracking-tight">
             <Sparkles className="h-4 w-4 text-muted-foreground" />
             Skills
           </h2>
@@ -225,7 +225,9 @@ export default function ApplicantDetailPage() {
 
         {/* Application flow */}
         <section className="rounded-xl border bg-card p-5">
-          <h2 className="mb-3 font-semibold">Application flow</h2>
+          <h2 className="mb-3 font-heading text-lg font-semibold tracking-tight">
+            Application flow
+          </h2>
           <ol>
             {events.map((e, i) => (
               <li key={`${e.status}-${e.at}`} className="flex gap-2.5">
@@ -241,7 +243,7 @@ export default function ApplicantDetailPage() {
                   <span className="font-medium">
                     {APPLICATION_STATUS_LABEL[e.status] ?? e.status}
                   </span>
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="block font-mono text-[11px] text-muted-foreground">
                     {new Date(e.at).toLocaleDateString()} · {timeAgo(e.at)}
                   </span>
                 </span>

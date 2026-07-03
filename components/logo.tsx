@@ -6,10 +6,12 @@ export function Logo({
   className,
   href = "/",
   showWordmark = true,
+  wordmarkClassName,
 }: {
   className?: string;
   href?: string;
   showWordmark?: boolean;
+  wordmarkClassName?: string;
 }) {
   return (
     <Link href={href} className={cn("flex items-center gap-2", className)}>
@@ -17,7 +19,12 @@ export function Logo({
         <Waypoints className="h-5 w-5" />
       </span>
       {showWordmark && (
-        <span className="font-heading text-xl font-semibold tracking-tight">
+        <span
+          className={cn(
+            "font-heading text-xl font-semibold tracking-tight",
+            wordmarkClassName
+          )}
+        >
           Career<span className="italic text-primary">Connect</span>
         </span>
       )}

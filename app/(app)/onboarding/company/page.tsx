@@ -145,7 +145,7 @@ export default function CompanyOnboardingPage() {
 
       <form
         onSubmit={onSubmit}
-        className="space-y-4 rounded-xl border bg-card p-5"
+        className="space-y-4 rounded-2xl border bg-card p-5"
       >
         <div className="space-y-1.5">
           <Label htmlFor="c-name">Company name</Label>

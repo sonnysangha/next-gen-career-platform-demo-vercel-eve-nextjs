@@ -114,10 +114,12 @@ export function AgentChat() {
       <div className="flex-1 space-y-4 overflow-y-auto pb-4">
         {!hasMessages && (
           <div className="mx-auto max-w-lg pt-8 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-ink text-apricot">
               <Sparkles className="h-6 w-6" />
             </div>
-            <h2 className="text-lg font-semibold">Your AI Career Agent</h2>
+            <h2 className="font-heading text-xl font-semibold tracking-tight">
+              Your AI Career Agent
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Ask about your profile, jobs, outreach, or a career plan. I read
               your real CareerConnect data and ask before saving anything.
@@ -127,7 +129,7 @@ export function AgentChat() {
                 <button
                   key={s}
                   onClick={() => submit(s)}
-                  className="rounded-lg border bg-card p-3 text-sm transition-colors hover:border-primary/40"
+                  className="rounded-xl border bg-card p-3 text-sm transition-colors hover:border-primary/40 hover:bg-accent/40"
                 >
                   {s}
                 </button>
@@ -143,7 +145,7 @@ export function AgentChat() {
             <div key={message.id}>
               {message.role === "user" ? (
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground">
+                  <div className="max-w-[85%] rounded-2xl rounded-br-md bg-ink px-3.5 py-2 text-sm text-paper">
                     {message.parts
                       .filter((p) => p.type === "text")
                       .map((p, i) => (
@@ -189,7 +191,7 @@ export function AgentChat() {
         )}
 
         {agent.status === "error" && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
             {agent.error?.message ?? "Something went wrong."}
           </div>
         )}
@@ -260,8 +262,10 @@ const TOOL_LABELS: Record<string, string> = {
 
 function ThinkingDots() {
   return (
-    <div className="flex items-center gap-2 pt-1.5 text-sm text-muted-foreground">
-      <span>Thinking</span>
+    <div className="flex items-center gap-2 pt-1.5 text-muted-foreground">
+      <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em]">
+        Thinking
+      </span>
       <span className="flex gap-1">
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
@@ -329,7 +333,7 @@ function PartView({
     if (!label) return null;
     const done = part.state === "output-available" || !busy;
     return (
-      <div className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
+      <div className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
         {done ? (
           <Check className="h-3 w-3 text-primary" />
         ) : (
@@ -366,9 +370,9 @@ function QuestionCard({
   }
 
   return (
-    <div className="rounded-xl border bg-muted/30 p-4">
-      <p className="flex items-center gap-1.5 text-sm font-medium">
-        <CircleHelp className="h-4 w-4 text-primary" />
+    <div className="rounded-2xl border bg-muted/30 p-4">
+      <p className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <CircleHelp className="h-3.5 w-3.5 text-primary" />
         Quick question
       </p>
       {request.prompt && <p className="mt-1 text-sm">{request.prompt}</p>}
@@ -381,7 +385,7 @@ function QuestionCard({
               type="button"
               disabled={busy}
               onClick={() => onAnswer(request.requestId, opt.id)}
-              className="rounded-lg border bg-background p-2.5 text-left text-sm transition-colors hover:border-primary/50 disabled:opacity-50"
+              className="rounded-xl border bg-background p-2.5 text-left text-sm transition-colors hover:border-primary/50 disabled:opacity-50"
             >
               <span className="font-medium">{opt.label ?? opt.id}</span>
               {opt.description && (
@@ -436,10 +440,10 @@ function ApprovalPreview({ input }: { input: unknown }) {
   if (entries.length === 0) return null;
 
   return (
-    <div className="mt-3 space-y-2.5 rounded-lg bg-background p-3 text-sm">
+    <div className="mt-3 space-y-2.5 rounded-xl bg-background p-3 text-sm">
       {entries.map(([k, v]) => (
         <div key={k}>
-          <p className="text-xs font-medium text-muted-foreground">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             {humanize(k)}
           </p>
           {Array.isArray(v) ? (
@@ -458,7 +462,7 @@ function ApprovalPreview({ input }: { input: unknown }) {
                 {(v as unknown[]).map((s, i) => (
                   <span
                     key={i}
-                    className="rounded bg-muted px-1.5 py-0.5 text-xs"
+                    className="rounded-full bg-muted px-2 py-0.5 text-xs"
                   >
                     {String(s)}
                   </span>
@@ -493,9 +497,9 @@ function ApprovalCard({
       ];
 
   return (
-    <div className="rounded-xl border border-primary/40 bg-primary/5 p-4">
-      <p className="flex items-center gap-1.5 text-sm font-medium">
-        <Sparkles className="h-4 w-4 text-primary" />
+    <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4">
+      <p className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <Sparkles className="h-3.5 w-3.5 text-primary" />
         Approval needed
       </p>
       <p className="mt-1 text-sm text-muted-foreground">
@@ -590,7 +594,7 @@ function JobCard({ job }: { job: Job }) {
         </div>
         <span
           className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+            "shrink-0 rounded-full px-2 py-0.5 font-mono text-[11px] font-medium",
             scoreClass,
           )}
         >
@@ -599,19 +603,19 @@ function JobCard({ job }: { job: Job }) {
       </div>
 
       {meta.length > 0 && (
-        <p className="mt-2 text-xs text-muted-foreground">{meta.join(" · ")}</p>
+        <p className="mt-2 font-mono text-[11px] text-muted-foreground">{meta.join(" · ")}</p>
       )}
 
       {(job.matchedSkills?.length ?? 0) > 0 && (
         <div className="mt-3">
-          <p className="text-[11px] font-medium text-muted-foreground">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Matched
           </p>
           <div className="mt-1 flex flex-wrap gap-1">
             {job.matchedSkills!.map((s) => (
               <span
                 key={s}
-                className="rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-700 dark:text-emerald-400"
+                className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400"
               >
                 {s}
               </span>
@@ -622,14 +626,14 @@ function JobCard({ job }: { job: Job }) {
 
       {(job.missingSkills?.length ?? 0) > 0 && (
         <div className="mt-2">
-          <p className="text-[11px] font-medium text-muted-foreground">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Missing
           </p>
           <div className="mt-1 flex flex-wrap gap-1">
             {job.missingSkills!.map((s) => (
               <span
                 key={s}
-                className="rounded border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 text-xs text-red-700 dark:text-red-400"
+                className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-xs text-red-700 dark:text-red-400"
               >
                 {s}
               </span>

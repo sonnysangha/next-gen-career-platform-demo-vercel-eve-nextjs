@@ -92,7 +92,9 @@ export function CompanyEditDialog({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit company</DialogTitle>
+            <DialogTitle className="font-heading text-lg font-semibold tracking-tight">
+              Edit company
+            </DialogTitle>
             <DialogDescription>
               These details appear on your public company page.
             </DialogDescription>

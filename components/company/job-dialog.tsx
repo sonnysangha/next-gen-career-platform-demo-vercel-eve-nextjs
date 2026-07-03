@@ -139,7 +139,9 @@ export function JobDialog({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>{isEdit ? "Edit job" : "Post a job"}</DialogTitle>
+            <DialogTitle className="font-heading text-lg font-semibold tracking-tight">
+              {isEdit ? "Edit job" : "Post a job"}
+            </DialogTitle>
             <DialogDescription>
               {isEdit
                 ? "Update the role details — changes go live immediately."
@@ -168,6 +170,7 @@ export function JobDialog({
                   value={salaryMin}
                   onChange={(e) => setSalaryMin(e.target.value)}
                   placeholder="90000"
+                  className="font-mono"
                 />
               </div>
               <div className="space-y-1.5">
@@ -179,6 +182,7 @@ export function JobDialog({
                   value={salaryMax}
                   onChange={(e) => setSalaryMax(e.target.value)}
                   placeholder="140000"
+                  className="font-mono"
                 />
               </div>
               <div className="space-y-1.5">

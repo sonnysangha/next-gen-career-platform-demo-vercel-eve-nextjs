@@ -36,6 +36,14 @@ const KIND_LABEL: Record<string, string> = {
   update: "Update",
 };
 
+/* Post-kind chips carry the landing palette: blue for hiring,
+   apricot for hot takes, green for launches. */
+const KIND_TONE: Record<string, string> = {
+  hiring: "bg-primary/10 text-primary",
+  hot_take: "bg-apricot/30 text-ink dark:bg-apricot/20 dark:text-apricot",
+  launch: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+};
+
 type FeedPost = {
   _id: Id<"posts">;
   _creationTime: number;
@@ -139,7 +147,10 @@ export function PostCard({
               {author?.name ?? "Unknown"}
             </Link>
             {post.kind !== "update" && (
-              <Badge variant="secondary" className="shrink-0 text-[10px]">
+              <Badge
+                variant="secondary"
+                className={cn("shrink-0 text-[10px]", KIND_TONE[post.kind])}
+              >
                 {KIND_LABEL[post.kind] ?? post.kind}
               </Badge>
             )}

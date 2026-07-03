@@ -39,12 +39,12 @@ export default function CompaniesPage() {
       </div>
 
       <div className="relative mb-4">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name, industry, or location…"
-          className="max-w-sm pl-8"
+          className="max-w-sm rounded-full pl-9"
         />
       </div>
 
@@ -73,11 +73,13 @@ export default function CompaniesPage() {
               <div className="flex items-start gap-3">
                 <CompanyLogo name={c.name} src={c.logoUrl} />
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{c.name}</p>
-                  <p className="truncate text-sm text-muted-foreground">
+                  <p className="truncate font-heading text-lg font-semibold tracking-tight">
+                    {c.name}
+                  </p>
+                  <p className="truncate font-mono text-xs text-muted-foreground">
                     {c.industry}
                   </p>
-                  <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                  <p className="mt-1.5 flex items-center gap-2.5 font-mono text-[11px] text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
                       {c.location}
@@ -90,7 +92,10 @@ export default function CompaniesPage() {
                 </div>
               </div>
               {c.openRoles > 0 && (
-                <Badge variant="secondary" className="mt-3">
+                <Badge
+                  variant="secondary"
+                  className="mt-3 border-transparent bg-apricot/30 font-mono text-[11px] text-ink"
+                >
                   {c.openRoles} open role{c.openRoles === 1 ? "" : "s"}
                 </Badge>
               )}

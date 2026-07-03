@@ -116,11 +116,13 @@ export function ApplicantsPanel({
   return (
     <section className="rounded-xl border bg-card p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-semibold">
+        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold tracking-tight">
           <Users className="h-4 w-4 text-muted-foreground" />
           Applicants
           {applicants !== undefined && (
-            <Badge variant="secondary">{applicants.length}</Badge>
+            <Badge variant="secondary" className="font-mono">
+              {applicants.length}
+            </Badge>
           )}
           {!isPro && (
             <Badge variant="outline" className="gap-1 font-normal">
@@ -144,7 +146,7 @@ export function ApplicantsPanel({
             )}
             {showRejected ? "Hide rejected" : "Show rejected"}
             {!showRejected && closedCount > 0 && (
-              <Badge variant="secondary" className="h-4 px-1 font-normal">
+              <Badge variant="secondary" className="h-4 px-1 font-mono font-normal">
                 {closedCount}
               </Badge>
             )}

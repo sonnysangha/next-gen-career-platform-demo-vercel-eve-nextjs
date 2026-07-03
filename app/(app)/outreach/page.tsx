@@ -29,13 +29,15 @@ export default function OutreachPage() {
         </h1>
       </div>
 
-      <div className="rounded-xl border bg-card p-4">
+      <div className="rounded-2xl border bg-card p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Send className="h-4 w-4" />
           </div>
           <div className="flex-1">
-            <p className="font-medium">Draft recruiter outreach with AI</p>
+            <p className="font-heading text-[17px] font-medium tracking-tight">
+              Draft recruiter outreach with AI
+            </p>
             <p className="text-sm text-muted-foreground">
               Generate a tailored connection note and recruiter DM for a role.
             </p>
@@ -52,7 +54,7 @@ export default function OutreachPage() {
         </div>
       </div>
 
-      <h2 className="pt-2 text-sm font-medium text-muted-foreground">
+      <h2 className="pt-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
         Your drafts
       </h2>
 
@@ -73,11 +75,14 @@ export default function OutreachPage() {
           {drafts.map((d) => (
             <div key={d._id} className="rounded-xl border bg-card p-4">
               <div className="mb-2 flex items-center justify-between">
-                <Badge variant={d.status === "saved" ? "default" : "secondary"}>
+                <Badge
+                  variant={d.status === "saved" ? "default" : "secondary"}
+                  className="font-mono text-[10px] font-medium uppercase tracking-[0.14em]"
+                >
                   {d.status}
                 </Badge>
                 <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground">
+                  <span className="font-mono text-[11px] text-muted-foreground">
                     {timeAgo(d.createdAt)}
                   </span>
                   <ConfirmDialog
@@ -106,7 +111,7 @@ export default function OutreachPage() {
                 </div>
               </div>
               {d.subject && (
-                <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
+                <p className="mb-2 flex items-center gap-1.5 font-heading text-base font-semibold tracking-tight">
                   <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                   {d.subject}
                 </p>
@@ -114,7 +119,9 @@ export default function OutreachPage() {
               <div className="space-y-2 text-sm">
                 <div>
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">Connection message</p>
+                    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      Connection message
+                    </p>
                     <Button
                       variant="ghost"
                       size="icon-xs"
@@ -131,7 +138,9 @@ export default function OutreachPage() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">Recruiter DM</p>
+                    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      Recruiter DM
+                    </p>
                     <Button
                       variant="ghost"
                       size="icon-xs"

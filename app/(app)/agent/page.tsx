@@ -18,7 +18,7 @@ export default async function AgentPage() {
   if (!pro) {
     return (
       <div className="mx-auto max-w-lg py-10 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-ink text-apricot">
           <Lock className="h-7 w-7" />
         </div>
         <h1 className="font-heading text-3xl font-semibold tracking-tight">
@@ -28,14 +28,19 @@ export default async function AgentPage() {
           Upgrade to put an AI agent to work on your career — grounded in your real
           CareerConnect profile and jobs.
         </p>
-        <ul className="mx-auto mt-6 max-w-sm space-y-2 text-left text-sm">
-          {PRO_PERKS.map((p) => (
-            <li key={p} className="flex items-start gap-2">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              {p}
-            </li>
-          ))}
-        </ul>
+        <div className="mx-auto mt-6 max-w-sm rounded-2xl bg-ink p-5 text-left text-paper">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-paper/60">
+            Included with Pro
+          </p>
+          <ul className="mt-3 space-y-2.5 text-sm text-paper/90">
+            {PRO_PERKS.map((p) => (
+              <li key={p} className="flex items-start gap-2">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-apricot" />
+                {p}
+              </li>
+            ))}
+          </ul>
+        </div>
         <Button render={<Link href="/pricing" />} className="mt-6 gap-1.5">
           <Sparkles className="h-4 w-4" />
           Upgrade to Pro

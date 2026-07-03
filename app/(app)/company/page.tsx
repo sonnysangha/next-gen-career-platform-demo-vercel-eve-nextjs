@@ -161,10 +161,14 @@ export default function CompanyDashboardPage() {
       {/* Jobs */}
       <section className="rounded-xl border bg-card p-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 font-semibold">
+          <h2 className="flex items-center gap-2 font-heading text-lg font-semibold tracking-tight">
             <Briefcase className="h-4 w-4 text-muted-foreground" />
             Job posts
-            {jobs !== undefined && <Badge variant="secondary">{jobs.length}</Badge>}
+            {jobs !== undefined && (
+              <Badge variant="secondary" className="font-mono">
+                {jobs.length}
+              </Badge>
+            )}
           </h2>
           <JobDialog companyId={company._id} />
         </div>
@@ -192,7 +196,9 @@ export default function CompanyDashboardPage() {
 
       {/* Danger zone */}
       <section className="rounded-xl border border-destructive/30 bg-card p-5">
-        <h2 className="font-semibold text-destructive">Danger zone</h2>
+        <h2 className="font-heading text-lg font-semibold tracking-tight text-destructive">
+          Danger zone
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Deleting your company removes the page, every job post, and all
           applications. This can&apos;t be undone.

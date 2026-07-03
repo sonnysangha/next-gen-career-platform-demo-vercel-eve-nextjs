@@ -71,15 +71,17 @@ export default async function PricingPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Free */}
-        <div className="flex flex-col rounded-xl border bg-card p-6">
-          <div className="mb-1 text-sm font-medium text-muted-foreground">Free</div>
-          <div className="mb-4 text-3xl font-semibold">
-            $0<span className="text-base font-normal text-muted-foreground">/mo</span>
+        <div className="flex flex-col rounded-3xl border border-ink/10 bg-card p-6">
+          <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Free
+          </div>
+          <div className="mb-4 font-heading text-4xl font-semibold tracking-tight">
+            $0<span className="text-base font-normal italic text-muted-foreground"> /mo</span>
           </div>
           <ul className="mb-6 space-y-3 text-sm">
             {FREE_FEATURES.map((f) => (
               <li key={f} className="flex items-start gap-2">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <span>{f}</span>
               </li>
             ))}
@@ -92,23 +94,25 @@ export default async function PricingPage() {
         {/* Pro */}
         <div
           className={cn(
-            "relative flex flex-col rounded-xl border-2 bg-card p-6",
-            pro ? "border-primary/40" : "border-primary"
+            "relative flex flex-col overflow-hidden rounded-3xl bg-ink p-6 text-paper shadow-[0_28px_70px_-30px_rgb(15_23_42/0.6)]",
+            pro ? "ring-1 ring-apricot/30" : "ring-1 ring-apricot/50"
           )}
         >
-          <div className="mb-1 flex items-center gap-2">
-            <span className="text-sm font-medium text-primary">Pro</span>
-            <Badge className="gap-1">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-paper/60">
+              Pro
+            </span>
+            <Badge className="gap-1 border-transparent bg-apricot text-[10px] font-bold uppercase tracking-wide text-ink">
               <Sparkles className="h-3 w-3" /> AI
             </Badge>
           </div>
-          <div className="mb-4 text-3xl font-semibold">
-            $20<span className="text-base font-normal text-muted-foreground">/mo</span>
+          <div className="mb-4 font-heading text-4xl font-semibold tracking-tight">
+            $20<span className="text-base font-normal italic text-paper/60"> /mo</span>
           </div>
-          <ul className="mb-6 space-y-3 text-sm">
+          <ul className="mb-6 space-y-3 text-sm text-paper/85">
             {PRO_FEATURES.map((f) => (
               <li key={f} className="flex items-start gap-2">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-apricot" />
                 <span>{f}</span>
               </li>
             ))}
@@ -116,7 +120,7 @@ export default async function PricingPage() {
 
           <div className="mt-auto">
             {pro ? (
-              <Button className="w-full" disabled>
+              <Button className="w-full bg-apricot font-semibold text-ink hover:bg-apricot/90" disabled>
                 You&apos;re on Pro ✨
               </Button>
             ) : (
@@ -127,14 +131,17 @@ export default async function PricingPage() {
                     planPeriod="month"
                     newSubscriptionRedirectUrl="/agent"
                   >
-                    <Button className="w-full gap-2">
+                    <Button className="w-full gap-2 bg-apricot font-semibold text-ink hover:bg-apricot/90">
                       <Sparkles className="h-4 w-4" />
                       Upgrade to Pro
                     </Button>
                   </CheckoutButton>
                 </Show>
                 <Show when="signed-out">
-                  <Button render={<Link href="/sign-in" />} className="w-full gap-2">
+                  <Button
+                    render={<Link href="/sign-in" />}
+                    className="w-full gap-2 bg-apricot font-semibold text-ink hover:bg-apricot/90"
+                  >
                     <Sparkles className="h-4 w-4" />
                     Sign in to upgrade
                   </Button>
@@ -147,7 +154,7 @@ export default async function PricingPage() {
 
       {/* ── For companies (org-based billing) ─────────────────────── */}
       <div className="mb-8 mt-14 text-center">
-        <h2 className="flex items-center justify-center gap-2 text-2xl font-semibold tracking-tight">
+        <h2 className="flex items-center justify-center gap-2 font-heading text-2xl font-semibold tracking-tight">
           <Building2 className="h-6 w-6 text-primary" />
           For companies
         </h2>
@@ -159,18 +166,18 @@ export default async function PricingPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Company Free */}
-        <div className="flex flex-col rounded-xl border bg-card p-6">
-          <div className="mb-1 text-sm font-medium text-muted-foreground">
+        <div className="flex flex-col rounded-3xl border border-ink/10 bg-card p-6">
+          <div className="mb-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Company Free
           </div>
-          <div className="mb-4 text-3xl font-semibold">
+          <div className="mb-4 font-heading text-4xl font-semibold tracking-tight">
             $0
-            <span className="text-base font-normal text-muted-foreground">/mo</span>
+            <span className="text-base font-normal italic text-muted-foreground"> /mo</span>
           </div>
           <ul className="mb-6 space-y-3 text-sm">
             {COMPANY_FREE_FEATURES.map((f) => (
               <li key={f} className="flex items-start gap-2">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <span>{f}</span>
               </li>
             ))}
@@ -183,19 +190,21 @@ export default async function PricingPage() {
         {/* Company Pro */}
         <div
           className={cn(
-            "relative flex flex-col rounded-xl border-2 bg-card p-6",
+            "relative flex flex-col rounded-3xl border-2 bg-card p-6",
             companyPro ? "border-primary/40" : "border-primary",
           )}
         >
-          <div className="mb-1 flex items-center gap-2">
-            <span className="text-sm font-medium text-primary">Company Pro</span>
-            <Badge className="gap-1">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-primary">
+              Company Pro
+            </span>
+            <Badge className="gap-1 text-[10px] font-bold uppercase tracking-wide">
               <Building2 className="h-3 w-3" /> Org
             </Badge>
           </div>
-          <div className="mb-4 text-3xl font-semibold">
+          <div className="mb-4 font-heading text-4xl font-semibold tracking-tight">
             $99
-            <span className="text-base font-normal text-muted-foreground">/mo</span>
+            <span className="text-base font-normal italic text-muted-foreground"> /mo</span>
           </div>
           <ul className="mb-6 space-y-3 text-sm">
             {COMPANY_PRO_FEATURES.map((f) => (

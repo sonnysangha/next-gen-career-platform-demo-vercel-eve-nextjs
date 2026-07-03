@@ -122,17 +122,17 @@ function JobsInner() {
         {tab === "browse" && (
           <div className="space-y-2 rounded-xl border bg-card p-3">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search title, skill, company…"
-                className="pl-8"
+                className="rounded-full pl-9"
               />
             </div>
             <div className="flex gap-2">
               <Select value={seniority} onValueChange={(v) => setSeniority(v ?? "all")}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9 rounded-full">
                   <SelectValue placeholder="Seniority" />
                 </SelectTrigger>
                 <SelectContent>
@@ -145,7 +145,7 @@ function JobsInner() {
                 </SelectContent>
               </Select>
               <Select value={workMode} onValueChange={(v) => setWorkMode(v ?? "all")}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-9 rounded-full">
                   <SelectValue placeholder="Work mode" />
                 </SelectTrigger>
                 <SelectContent>
@@ -163,7 +163,7 @@ function JobsInner() {
 
         {tab === "browse" && companyMatches.length > 0 && (
           <div className="rounded-xl border bg-card p-3">
-            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               Companies
             </p>
             <div className="space-y-0.5">
@@ -171,7 +171,7 @@ function JobsInner() {
                 <Link
                   key={c._id}
                   href={`/companies/${c.slug}`}
-                  className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-muted"
+                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent/40"
                 >
                   <CompanyLogo name={c.name} src={c.logoUrl} className="h-8 w-8" />
                   <span className="min-w-0">
@@ -257,12 +257,31 @@ function JobsInner() {
                   <MapPin className="h-4 w-4" />
                   {detail.location}
                 </p>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-                  <Badge variant="secondary">{workModeLabel(detail.workMode)}</Badge>
-                  <Badge variant="secondary">{seniorityLabel(detail.seniority)}</Badge>
-                  <span className="font-medium">
-                    {formatSalary(detail.salaryMin, detail.salaryMax, detail.currency)}
-                  </span>
+                <div className="mt-3 grid grid-cols-3 gap-3 rounded-xl bg-paper-deep/60 p-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      Work mode
+                    </p>
+                    <p className="mt-0.5 truncate text-sm font-medium">
+                      {workModeLabel(detail.workMode)}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      Seniority
+                    </p>
+                    <p className="mt-0.5 truncate text-sm font-medium">
+                      {seniorityLabel(detail.seniority)}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      Salary
+                    </p>
+                    <p className="mt-0.5 truncate font-mono text-sm font-medium">
+                      {formatSalary(detail.salaryMin, detail.salaryMax, detail.currency)}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -283,7 +302,9 @@ function JobsInner() {
               />
 
               <div>
-                <p className="mb-1.5 text-sm font-medium">Required skills</p>
+                <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Required skills
+                </p>
                 <div className="flex flex-wrap gap-1.5">
                   {detail.skillsRequired.map((s) => (
                     <Badge key={s} variant="outline" className="font-normal">
@@ -294,15 +315,19 @@ function JobsInner() {
               </div>
 
               <div>
-                <p className="mb-1.5 text-sm font-medium">About the role</p>
+                <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  About the role
+                </p>
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
                   {detail.description}
                 </p>
               </div>
 
               {detail.recruiter && (
-                <div className="rounded-lg border p-3 text-sm">
-                  <p className="text-xs text-muted-foreground">Recruiter</p>
+                <div className="rounded-xl border p-3 text-sm">
+                  <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Recruiter
+                  </p>
                   <p className="font-medium">{detail.recruiter.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {detail.recruiter.title}

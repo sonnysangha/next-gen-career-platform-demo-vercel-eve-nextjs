@@ -72,9 +72,11 @@ export function NotificationsBell() {
           </span>
         )}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-96 p-0">
+      <PopoverContent align="end" className="w-96 rounded-2xl p-0">
         <div className="flex items-center justify-between border-b px-3 py-2">
-          <p className="text-sm font-semibold">Notifications</p>
+          <p className="font-heading text-sm font-semibold tracking-tight">
+            Notifications
+          </p>
           {typeof unread === "number" && unread > 0 && (
             <Button
               variant="ghost"
@@ -91,7 +93,7 @@ export function NotificationsBell() {
           {notifications === undefined ? (
             <p className="p-4 text-sm text-muted-foreground">Loading…</p>
           ) : notifications.length === 0 ? (
-            <p className="p-6 text-center text-sm text-muted-foreground">
+            <p className="p-6 text-center font-heading text-sm italic text-muted-foreground">
               You&apos;re all caught up 🎉
             </p>
           ) : (
@@ -102,7 +104,7 @@ export function NotificationsBell() {
                   <div
                     key={n._id}
                     className={cn(
-                      "group flex items-start gap-3 px-3 py-2.5",
+                      "group flex items-start gap-3 px-3 py-2.5 transition-colors hover:bg-accent/40",
                       !n.read && "bg-primary/5",
                     )}
                   >
@@ -125,7 +127,7 @@ export function NotificationsBell() {
                       className="min-w-0 flex-1"
                     >
                       <p className="text-sm leading-snug">{n.message}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
+                      <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
                         {timeAgo(n.createdAt)}
                       </p>
                     </Link>

@@ -40,7 +40,7 @@ export default function CompanyPage() {
   }, [ensureMyProfileEmbedding]);
 
   if (data === undefined) {
-    return <Skeleton className="h-96 w-full rounded-xl" />;
+    return <Skeleton className="h-96 w-full rounded-2xl" />;
   }
   if (data === null) {
     return <EmptyState icon={Building2} title="Company not found" />;
@@ -51,9 +51,9 @@ export default function CompanyPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       {/* Header */}
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="overflow-hidden rounded-2xl border bg-card">
         <div
-          className="h-28 bg-gradient-to-r from-primary/40 to-primary/10 bg-cover bg-center sm:h-36"
+          className="h-28 bg-gradient-to-r from-primary/25 via-accent to-apricot/40 bg-cover bg-center sm:h-36"
           style={
             company.coverImageUrl
               ? { backgroundImage: `url(${company.coverImageUrl})` }
@@ -85,7 +85,7 @@ export default function CompanyPage() {
               )}
             </div>
             <p className="text-sm text-muted-foreground">{company.industry}</p>
-            <p className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <p className="mt-1.5 flex flex-wrap items-center gap-3 font-mono text-[11px] text-muted-foreground">
               <span className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" />
                 {company.location}
@@ -99,7 +99,7 @@ export default function CompanyPage() {
                   href={company.websiteUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1 hover:text-foreground"
+                  className="flex items-center gap-1 transition-colors hover:text-foreground"
                 >
                   <ExternalLink className="h-3 w-3" />
                   Website
@@ -116,9 +116,12 @@ export default function CompanyPage() {
 
       {/* Open roles */}
       <section className="rounded-xl border bg-card p-5">
-        <h2 className="mb-3 flex items-center gap-2 font-semibold">
+        <h2 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold tracking-tight">
           <Briefcase className="h-4 w-4 text-muted-foreground" />
-          Open roles ({jobs.length})
+          Open roles{" "}
+          <span className="font-mono text-sm font-medium text-muted-foreground">
+            ({jobs.length})
+          </span>
         </h2>
         {jobs.length === 0 ? (
           <p className="text-sm text-muted-foreground">No open roles right now.</p>
@@ -128,7 +131,7 @@ export default function CompanyPage() {
               <Link
                 key={job._id}
                 href={`/jobs?job=${job._id}`}
-                className="flex items-center justify-between rounded-lg border p-3 hover:border-primary/40"
+                className="flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-accent/40"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -137,12 +140,12 @@ export default function CompanyPage() {
                       <MatchBadge score={job.matchScore} />
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
                     {workModeLabel(job.workMode)} · {seniorityLabel(job.seniority)} ·{" "}
                     {job.location}
                   </p>
                 </div>
-                <span className="shrink-0 text-sm font-medium">
+                <span className="shrink-0 font-mono text-sm font-medium">
                   {formatSalary(job.salaryMin, job.salaryMax, job.currency)}
                 </span>
               </Link>
@@ -154,7 +157,7 @@ export default function CompanyPage() {
       {/* Recruiters */}
       {recruiters.length > 0 && (
         <section className="rounded-xl border bg-card p-5">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold">
+          <h2 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold tracking-tight">
             <Users className="h-4 w-4 text-muted-foreground" />
             Recruiters
           </h2>
@@ -175,7 +178,7 @@ export default function CompanyPage() {
       {/* Employees */}
       {employees.length > 0 && (
         <section className="rounded-xl border bg-card p-5">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold">
+          <h2 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold tracking-tight">
             <Users className="h-4 w-4 text-muted-foreground" />
             People
           </h2>
@@ -184,7 +187,7 @@ export default function CompanyPage() {
               <Link
                 key={user._id}
                 href={`/in/${user.username}`}
-                className="flex items-center gap-3 rounded-lg border p-3 hover:border-primary/40"
+                className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-accent/40"
               >
                 <UserAvatar name={user.name} src={user.imageUrl} className="h-9 w-9" />
                 <div className="min-w-0">

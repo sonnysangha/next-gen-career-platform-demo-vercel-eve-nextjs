@@ -85,7 +85,7 @@ export function PostComposer({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Share an update, a win, or a hot take…"
-            className="min-h-20 resize-none border-0 bg-muted/40 focus-visible:ring-0"
+            className="min-h-20 resize-none rounded-2xl border-0 bg-muted/50 focus-visible:ring-0"
           />
 
           {image && (
@@ -110,7 +110,7 @@ export function PostComposer({
           <div className="mt-2 flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
               <Select value={kind} onValueChange={(v) => setKind(v ?? "update")}>
-                <SelectTrigger className="h-9 w-36">
+                <SelectTrigger className="h-9 w-36 rounded-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -62,7 +62,10 @@ export default function ApplicationsPage() {
       ) : (
         <div className="space-y-3">
           {applications.map((app) => (
-            <div key={app._id} className="rounded-xl border bg-card p-4">
+            <div
+              key={app._id}
+              className="rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+            >
               <div className="flex items-start justify-between gap-3">
                 <Link
                   href={app.job ? `/jobs?job=${app.job._id}` : "#"}
@@ -81,7 +84,7 @@ export default function ApplicationsPage() {
                       {app.company?.name ?? "Unknown company"}
                     </p>
                     {app.job && (
-                      <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                      <p className="mt-0.5 flex flex-wrap items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
                         <MapPin className="h-3 w-3" />
                         {app.job.location} · {workModeLabel(app.job.workMode)} ·{" "}
                         {formatSalary(
@@ -95,7 +98,7 @@ export default function ApplicationsPage() {
                 </Link>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <Badge
-                    className={`border-transparent ${applicationStatusTone(app.status)}`}
+                    className={`border-transparent font-mono text-[10px] font-medium uppercase tracking-[0.14em] ${applicationStatusTone(app.status)}`}
                   >
                     {APPLICATION_STATUS_LABEL[app.status] ?? app.status}
                   </Badge>
@@ -106,7 +109,7 @@ export default function ApplicationsPage() {
               </div>
 
               <div className="mt-3 flex items-center justify-between border-t pt-2 text-xs text-muted-foreground">
-                <span>
+                <span className="font-mono text-[11px]">
                   Applied {timeAgo(app.createdAt)} · updated {timeAgo(app.updatedAt)}
                 </span>
                 {app.status !== "withdrawn" &&

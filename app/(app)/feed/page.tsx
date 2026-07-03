@@ -35,7 +35,7 @@ export default function FeedPage() {
       <aside className="hidden lg:block">
         <div className="sticky top-[4.5rem] space-y-4">
           <div className="overflow-hidden rounded-xl border bg-card">
-            <div className="h-14 bg-gradient-to-r from-primary/30 to-primary/10" />
+            <div className="h-14 bg-gradient-to-r from-primary/25 via-accent to-apricot/40" />
             <div className="-mt-7 flex flex-col items-center px-4 pb-4 text-center">
               {me === undefined ? (
                 <Skeleton className="h-14 w-14 rounded-full" />
@@ -46,7 +46,7 @@ export default function FeedPage() {
                   className="h-14 w-14 border-4 border-card"
                 />
               )}
-              <p className="mt-2 font-medium">{me?.user.name ?? " "}</p>
+              <p className="mt-2 font-heading text-lg font-semibold tracking-tight">{me?.user.name ?? " "}</p>
               <p className="line-clamp-2 text-xs text-muted-foreground">
                 {me?.profile?.headline ?? "Add a headline to your profile"}
               </p>
@@ -65,11 +65,11 @@ export default function FeedPage() {
 
           <Link
             href="/agent"
-            className="flex items-center gap-2 rounded-xl border bg-gradient-to-br from-primary/10 to-transparent p-3 text-sm font-medium hover:border-primary/40"
+            className="group flex items-center gap-2 rounded-2xl bg-ink p-3.5 text-sm font-medium text-paper transition-colors hover:bg-ink/90"
           >
-            <Sparkles className="h-4 w-4 text-primary" />
+            <Sparkles className="h-4 w-4 text-apricot" />
             AI Career Agent
-            <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
+            <ArrowRight className="ml-auto h-4 w-4 text-paper/60 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
       </aside>
@@ -118,7 +118,9 @@ export default function FeedPage() {
         {people !== undefined && people.length > 0 && (
           <div className="space-y-3 rounded-xl border bg-card p-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">People to follow</p>
+              <p className="font-heading text-lg font-semibold tracking-tight">
+                People to follow
+              </p>
               <UserPlus className="h-4 w-4 text-muted-foreground" />
             </div>
             {people.map((p) => (
@@ -158,7 +160,9 @@ export default function FeedPage() {
 
         <div className="space-y-3 rounded-xl border bg-card p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">Suggested jobs</p>
+            <p className="font-heading text-lg font-semibold tracking-tight">
+              Suggested jobs
+            </p>
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </div>
           {jobs === undefined ? (
@@ -172,7 +176,7 @@ export default function FeedPage() {
               <Link
                 key={job._id}
                 href={`/jobs?job=${job._id}`}
-                className="block rounded-lg border p-2.5 text-sm hover:border-primary/40"
+                className="block rounded-xl border p-2.5 text-sm transition-colors hover:border-primary/40 hover:bg-accent/40"
               >
                 <p className="truncate font-medium">{job.title}</p>
                 <p className="truncate text-xs text-muted-foreground">

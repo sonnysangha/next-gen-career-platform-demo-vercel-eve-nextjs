@@ -51,7 +51,7 @@ function Card({
   return (
     <section className="rounded-xl border bg-card p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-semibold">
+        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold tracking-tight">
           <Icon className="h-4 w-4 text-muted-foreground" />
           {title}
         </h2>
@@ -117,9 +117,9 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       {/* Header */}
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="overflow-hidden rounded-2xl border bg-card">
         <div
-          className="relative h-32 bg-gradient-to-r from-primary/40 to-primary/10 bg-cover bg-center sm:h-40"
+          className="relative h-32 bg-gradient-to-r from-primary/25 via-accent to-apricot/40 bg-cover bg-center sm:h-40"
           style={
             profile?.coverImageUrl
               ? { backgroundImage: `url(${profile.coverImageUrl})` }
@@ -228,18 +228,21 @@ export default function ProfilePage() {
               )}
               {followStats && (
                 <span>
-                  <span className="font-medium text-foreground">
+                  <span className="font-mono text-xs font-medium text-foreground">
                     {followStats.followers}
                   </span>{" "}
                   followers ·{" "}
-                  <span className="font-medium text-foreground">
+                  <span className="font-mono text-xs font-medium text-foreground">
                     {followStats.following}
                   </span>{" "}
                   following
                 </span>
               )}
               {profile?.openToWork && (
-                <Badge variant="secondary" className="gap-1">
+                <Badge
+                  variant="secondary"
+                  className="gap-1 border-transparent bg-apricot/30 text-ink"
+                >
                   Open to work
                 </Badge>
               )}
@@ -252,7 +255,7 @@ export default function ProfilePage() {
                     href={href}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                    className="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {label}
@@ -302,9 +305,13 @@ export default function ProfilePage() {
           <div className="space-y-3">
             {savedDrafts.map((d) => (
               <div key={d._id} className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">Suggested headline</p>
+                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Suggested headline
+                </p>
                 <p className="font-medium">{d.headline}</p>
-                <p className="mt-2 text-xs text-muted-foreground">Suggested about</p>
+                <p className="mt-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Suggested about
+                </p>
                 <p className="text-sm">{d.about}</p>
                 <div className="mt-3 flex items-center gap-2">
                   <Button
@@ -372,7 +379,7 @@ export default function ProfilePage() {
                   ) : (
                     <p className="text-sm text-muted-foreground">{exp.company}</p>
                   )}
-                  <p className="text-xs text-muted-foreground">
+                  <p className="font-mono text-[11px] text-muted-foreground">
                     {exp.startDate} – {exp.endDate ?? "Present"}
                     {exp.location ? ` · ${exp.location}` : ""}
                   </p>
@@ -407,7 +414,7 @@ export default function ProfilePage() {
                   <p className="text-sm text-muted-foreground">
                     {[edu.degree, edu.field].filter(Boolean).join(", ")}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="font-mono text-[11px] text-muted-foreground">
                     {edu.startYear} – {edu.endYear ?? "Present"}
                   </p>
                   {edu.description && (
@@ -452,7 +459,7 @@ export default function ProfilePage() {
                   "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                   s.endorsedByMe
                     ? "border-primary/40 bg-primary/10 text-primary"
-                    : "bg-secondary text-secondary-foreground hover:border-primary/40",
+                    : "border-border/70 bg-paper-deep text-ink hover:border-primary/40",
                   signedIn && "cursor-pointer",
                 )}
                 title={signedIn ? "Endorse this skill" : undefined}
@@ -460,7 +467,7 @@ export default function ProfilePage() {
                 {s.name}
                 <span
                   className={cn(
-                    "flex items-center gap-0.5",
+                    "flex items-center gap-0.5 font-mono text-[11px]",
                     s.endorsedByMe ? "text-primary" : "text-muted-foreground",
                   )}
                 >
@@ -493,7 +500,7 @@ export default function ProfilePage() {
                     className="mt-2 max-h-64 w-full rounded-md border object-cover"
                   />
                 )}
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 font-mono text-[11px] text-muted-foreground">
                   {timeAgo(p._creationTime)} · {p.likeCount} likes
                 </p>
               </div>

@@ -96,7 +96,9 @@ export function JobCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="truncate font-medium">{job.title}</h3>
+            <h3 className="truncate font-heading text-base font-semibold tracking-tight">
+              {job.title}
+            </h3>
             {typeof job.matchScore === "number" && (
               <MatchBadge score={job.matchScore} />
             )}
@@ -127,7 +129,7 @@ export function JobCard({
         <span>·</span>
         <span>{seniorityLabel(job.seniority)}</span>
         <span>·</span>
-        <span className="font-medium text-foreground">
+        <span className="font-mono font-medium text-foreground">
           {formatSalary(job.salaryMin, job.salaryMax, job.currency)}
         </span>
       </div>

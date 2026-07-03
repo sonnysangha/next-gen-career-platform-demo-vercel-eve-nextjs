@@ -115,14 +115,17 @@ export function PipelineBoard({
               }}
             >
               <div className="flex items-center justify-between gap-1 border-b px-2.5 py-2">
-                <span className="flex items-center gap-1.5 text-xs font-medium">
+                <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                   <span
                     className={`inline-block h-2 w-2 rounded-full ${applicationStatusTone(stage)}`}
                   />
                   {APPLICATION_STATUS_LABEL[stage]}
                   {locked && <Lock className="h-3 w-3 text-muted-foreground" />}
                 </span>
-                <Badge variant="secondary" className="h-5 px-1.5 font-normal">
+                <Badge
+                  variant="secondary"
+                  className="h-5 px-1.5 font-mono text-[10px] font-normal"
+                >
                   {cards.length}
                 </Badge>
               </div>
@@ -150,9 +153,11 @@ export function PipelineBoard({
                         setDropTarget(null);
                       }}
                       onClick={() => onOpen?.(app._id)}
-                      className={`cursor-grab rounded-md border bg-card p-2.5 shadow-xs transition-colors hover:border-primary/40 active:cursor-grabbing ${
-                        dragging === app._id ? "opacity-50" : ""
-                      }`}
+                      className={`cursor-grab rounded-md border p-2.5 shadow-xs transition-colors active:cursor-grabbing ${
+                        stage === "offer"
+                          ? "border-apricot/50 bg-apricot/10 hover:border-apricot"
+                          : "bg-card hover:border-primary/40"
+                      } ${dragging === app._id ? "opacity-50" : ""}`}
                     >
                       <div className="flex items-center gap-2">
                         <UserAvatar

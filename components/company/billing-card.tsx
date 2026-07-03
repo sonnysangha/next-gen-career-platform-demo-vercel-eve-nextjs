@@ -33,9 +33,9 @@ export function CompanyBillingCard({ openJobs }: { openJobs: number }) {
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <p className="flex items-center gap-2 text-sm font-semibold">
+            <p className="flex items-center gap-2 font-heading text-base font-semibold tracking-tight">
               Company Pro
-              <Badge className="gap-1 text-[10px]">
+              <Badge className="gap-1 font-mono text-[10px]">
                 <Sparkles className="h-3 w-3" /> Active
               </Badge>
             </p>
@@ -58,19 +58,22 @@ export function CompanyBillingCard({ openJobs }: { openJobs: number }) {
   const atCap = openJobs >= FREE_OPEN_JOB_LIMIT;
 
   return (
-    <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink p-4 text-paper">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-apricot/20 text-apricot">
           <Building2 className="h-4 w-4" />
         </div>
         <div>
-          <p className="flex items-center gap-2 text-sm font-semibold">
+          <p className="flex items-center gap-2 font-heading text-base font-semibold tracking-tight">
             Company Free
-            <Badge variant={atCap ? "destructive" : "secondary"} className="text-[10px]">
+            <Badge
+              variant={atCap ? "destructive" : "secondary"}
+              className="font-mono text-[10px]"
+            >
               {slotsUsed}/{FREE_OPEN_JOB_LIMIT} open job slots used
             </Badge>
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-paper/70">
             {atCap
               ? "You've hit the free job limit — upgrade for unlimited posts, the interview/offer pipeline, and candidate insights."
               : "Upgrade for unlimited job posts, the interview/offer pipeline, and candidate skill insights."}
@@ -84,13 +87,18 @@ export function CompanyBillingCard({ openJobs }: { openJobs: number }) {
           for="organization"
           newSubscriptionRedirectUrl="/company"
         >
-          <Button size="sm" className="gap-1.5">
+          <Button size="sm" className="gap-1.5 bg-apricot text-ink hover:bg-apricot/90">
             <Sparkles className="h-4 w-4" />
             Upgrade to Company Pro
           </Button>
         </CheckoutButton>
       ) : (
-        <Button render={<Link href="/pricing" />} size="sm" variant="outline" className="gap-1.5">
+        <Button
+          render={<Link href="/pricing" />}
+          size="sm"
+          variant="outline"
+          className="gap-1.5 border-paper/30 bg-transparent text-paper hover:bg-paper/10 hover:text-paper"
+        >
           <Sparkles className="h-4 w-4" />
           See company plans
         </Button>
